@@ -1,159 +1,56 @@
 <script setup lang="ts">
 import { site } from '~/data/site'
-type Member = Record<string, any>
+import { memberGroups, memberLinks, memberRoleText, memberSeasonText, memberSeasons, seasonRoleText, type Member } from '~/utils/members'
 
 const route = useRoute()
-const slug = decodeURIComponent(String(route.params.slug ?? ''))
-
-const { data: member } = await useAsyncData<Member | null>(`members:${slug}`, async () => {
-  return queryCollection('members').where('name', '=', slug).first() as Promise<Member | null>
-})
-
-if (!member.value) {
-  throw createError({
-    statusCode: 404,
-    statusMessage: '成员不存在'
-  })
-}
-
-const { data: rawMembers } = await useAsyncData<Member[]>('members:related', () =>
-  queryCollection('members').all() as Promise<Member[]>
-)
-
-useHead(() => ({
-  title: `${member.value?.name || '成员'} | ${site.shortName}`
-}))
-
-const cleanText = (value: unknown) =>
-  String(value ?? '')
-    .replace(/<br\s*\/?>/gi, ' · ')
-    .replace(/<[^>]+>/g, '')
-    .trim()
-
-const splitPhrases = (value: unknown) =>
-  cleanText(value)
-    .split(/·|\/|,|，|;|；/)
-    .map((item) => item.replace(/^\s*\d{2,4}\s*赛季\s*/, '').trim())
-    .filter(Boolean)
-
-const uniq = (items: string[]) => [...new Set(items)]
-
-const splitSeason = (value: unknown) =>
-  String(value ?? '')
-    .split(/\/|,|，/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-
-const formatSeasonList = (value: unknown) => splitSeason(value).join('、')
-
-const displayName = computed(() => String(member.value?.name || '成员'))
-const roleText = computed(() => uniq(splitPhrases(member.value?.role)).join('，'))
-
-const linkLabels: Record<string, string> = {
-  github: 'GitHub',
-  homepage: '主页',
-  'home-page': '主页',
-  blog: '博客',
-  bilibili: 'Bilibili',
-  'google-scholar': 'Google Scholar'
-}
-
-const externalLinks = computed(() =>
-  Object.entries(member.value?.links ?? {})
-    .filter(([, value]) => value)
-    .map(([key, value]) => ({
-      label: linkLabels[key] ?? key,
-      href: String(value)
-    }))
-)
-
-const groupLabel = (value: Member | null | undefined) => {
-  const role = String(value?.role ?? '')
-  const type = String(value?.type ?? '')
-  if (type.includes('指导老师') || role.includes('指导老师')) return '指导老师'
-  if (type.includes('团队负责人')) return '团队负责人'
-  if (type.includes('机械') || role.includes('机械')) return '机械组'
-  if (type.includes('控制') || role.includes('控制') || role.includes('电控')) return '控制组'
-  if (type.includes('电路') || role.includes('电路')) return '电路组'
-  if (type.includes('算法') || role.includes('算法')) return '算法组'
-  if (type.includes('运营') || role.includes('运营')) return '运营组'
-  if (value?.advisor) return '顾问'
-  return '成员'
-}
-
+const slug = String(route.params.slug || '')
+const { data: member } = await useAsyncData(`members:${slug}`, () =>
+  queryCollection('members').where('name', '=', slug).first() as Promise<Member | null>)
+if (!member.value) throw createError({ statusCode: 404, statusMessage: '成员不存在' })
+const { data: rawMembers } = await useAsyncData('members:related', () => queryCollection('members').all() as Promise<Member[]>)
+useHead(() => ({ title: `${member.value?.name || '成员'} | ${site.shortName}` }))
+const externalLinks = computed(() => member.value ? memberLinks(member.value) : [])
+const currentSeasons = computed(() => member.value ? memberSeasons(member.value) : [])
 const relatedMembers = computed(() => {
   const current = member.value
   if (!current) return []
-
-  const currentSeasons = new Set([...splitSeason(current.time), ...splitSeason(current.advisor)])
-  const currentGroup = groupLabel(current)
-
-  return [...(rawMembers.value ?? [])]
-    .filter((item) => item.name !== current.name)
-    .map((item) => {
-      const seasons = [...splitSeason(item.time), ...splitSeason(item.advisor)]
-      const seasonScore = seasons.some((season) => currentSeasons.has(season)) ? 2 : 0
-      const groupScore = groupLabel(item) === currentGroup ? 1 : 0
-      return { item, score: seasonScore + groupScore }
-    })
-    .filter(({ score }) => score > 0)
-    .sort((a, b) => b.score - a.score || String(a.item.name).localeCompare(String(b.item.name), 'zh-CN'))
-    .slice(0, 3)
-    .map(({ item }) => item)
+  const years = new Set(current.seasons.map(item => item.year))
+  const groups = new Set(memberGroups(current))
+  return [...(rawMembers.value || [])].filter(item => item.name !== current.name && item.kind === current.kind)
+    .map(item => ({ item, score: (item.seasons.some(record => years.has(record.year)) ? 2 : 0) + (memberGroups(item).some(group => groups.has(group)) ? 1 : 0) }))
+    .filter(item => item.score > 0).sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name, 'zh-CN'))
+    .slice(0, 3).map(item => item.item)
 })
 </script>
 
 <template>
   <main v-if="member">
     <section class="member-profile-hero">
-      <div class="member-profile-photo">
-        <img :src="member.image || site.logo" :alt="`${displayName} 头像`">
-      </div>
-
+      <div class="member-profile-photo"><img :src="member.image || site.logo" :alt="`${member.name} 头像`"></div>
       <div class="member-profile-copy">
-        <p class="eyebrow">{{ groupLabel(member) }}</p>
-        <h1>{{ displayName }}</h1>
-        <p v-if="roleText" class="profile-role">{{ roleText }}</p>
-
+        <p class="eyebrow">{{ member.kind === 'teacher' ? '指导老师' : memberGroups(member).join('、') }}</p>
+        <h1>{{ member.name }}</h1>
+        <p class="profile-role">{{ memberRoleText(member) }}</p>
         <div class="profile-tags">
-          <span v-if="member.time">{{ formatSeasonList(member.time) }} 赛季</span>
-          <span v-if="member.advisor">顾问 {{ formatSeasonList(member.advisor) }}</span>
-          <span v-if="member.grade">{{ member.grade }} 级</span>
-          <span v-if="member.affiliation">{{ member.affiliation }}</span>
+          <span>{{ member.university }}</span><span>{{ member.affiliation }}</span>
+          <span v-if="member.kind === 'student' && member.grade">{{ member.grade }} 级</span>
+          <span v-if="member.kind === 'teacher'">{{ memberSeasonText(member) }}</span>
+          <span v-if="member.department">{{ member.department }}</span>
+          <span v-for="title in member.titles || []" :key="title">{{ title }}</span>
         </div>
-
+        <ul v-if="member.kind === 'student'" class="profile-lines" aria-label="赛季任职">
+          <li v-for="record in currentSeasons" :key="record.year">{{ record.year }} 赛季 · {{ seasonRoleText(record) }}</li>
+        </ul>
         <div v-if="externalLinks.length" class="profile-links">
-          <a
-            v-for="link in externalLinks"
-            :key="link.href"
-            :href="link.href"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ link.label }}
-          </a>
+          <a v-for="link in externalLinks" :key="link.href" :href="link.href" target="_blank" rel="noopener noreferrer">{{ link.label }}</a>
         </div>
       </div>
     </section>
-
-    <section class="member-profile-content">
-      <article class="member-prose">
-        <ContentRenderer :value="member" />
-      </article>
-
+    <section class="member-profile-content" :class="{ 'no-related': !relatedMembers.length }">
+      <article class="member-prose"><ContentRenderer :value="member" /></article>
       <aside v-if="relatedMembers.length" class="related-members">
-        <div class="section-heading compact">
-          <p class="eyebrow">Related</p>
-          <h2>相关成员</h2>
-        </div>
-        <div class="related-member-list">
-          <MemberCard
-            v-for="item in relatedMembers"
-            :key="item.name"
-            :member="item"
-            compact
-          />
-        </div>
+        <div class="section-heading compact"><p class="eyebrow">Related</p><h2>相关成员</h2></div>
+        <div class="related-member-list"><MemberCard v-for="item in relatedMembers" :key="item.name" :member="item" compact /></div>
       </aside>
     </section>
   </main>

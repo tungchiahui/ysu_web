@@ -1,102 +1,34 @@
 <script setup lang="ts">
 import { site } from '~/data/site'
-type Member = Record<string, any>
+import { memberLinks, memberRoleText, memberSeasonText, type Member } from '~/utils/members'
 
-const props = defineProps<{
-  member: Member
-  compact?: boolean
-}>()
-
-const cleanText = (value: unknown) =>
-  String(value ?? '')
-    .replace(/<br\s*\/?>/gi, ' · ')
-    .replace(/<[^>]+>/g, '')
-    .trim()
-
-const splitPhrases = (value: unknown) =>
-  cleanText(value)
-    .split(/·|\/|,|，|;|；/)
-    .map((item) => item.replace(/^\s*\d{2,4}\s*赛季\s*/, '').trim())
-    .filter(Boolean)
-
-const uniq = (items: string[]) => [...new Set(items)]
-
-const splitSeason = (value: unknown) =>
-  String(value ?? '')
-    .split(/\/|,|，/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-
-const formatSeasonList = (value: unknown) => splitSeason(value).join('、')
-
-const displayName = computed(() => String(props.member.name || '成员'))
-const memberPath = computed(() => `/team/${encodeURIComponent(displayName.value)}`)
-
-const seasonText = computed(() => {
-  const time = props.member.time ? `${formatSeasonList(props.member.time)} 赛季` : ''
-  const advisor = props.member.advisor ? `顾问 ${formatSeasonList(props.member.advisor)}` : ''
-  return [time, advisor].filter(Boolean).join(' / ')
-})
-
-const roleText = computed(() => uniq(splitPhrases(props.member.role)).join('，'))
-
-const linkLabels: Record<string, string> = {
-  github: 'GitHub',
-  homepage: '主页',
-  'home-page': '主页',
-  blog: '博客',
-  bilibili: 'Bilibili',
-  'google-scholar': 'Google Scholar'
-}
-
-const externalLinks = computed(() =>
-  Object.entries(props.member.links ?? {})
-    .filter(([, value]) => value)
-    .map(([key, value]) => ({
-      label: linkLabels[key] ?? key,
-      href: String(value)
-    }))
-)
-
+const props = withDefaults(defineProps<{ member: Member; compact?: boolean; season?: string }>(), { season: 'all' })
+const externalLinks = computed(() => memberLinks(props.member))
+const memberPath = computed(() => `/team/${encodeURIComponent(props.member.name)}`)
 const infoRows = computed(() => [
-  { label: '职务', value: roleText.value },
+  { label: '职务', value: memberRoleText(props.member, props.season) },
+  { label: '学校', value: props.member.university },
   { label: '学院', value: props.member.affiliation },
-  { label: '赛季', value: seasonText.value },
-  { label: '年级', value: props.member.grade ? `${props.member.grade} 级` : '' }
-].filter((item) => item.value))
+  { label: '部门', value: props.member.department },
+  { label: '头衔', value: props.member.titles?.join('、') },
+  { label: '赛季', value: memberSeasonText(props.member, props.season) },
+  { label: '年级', value: props.member.kind === 'student' && props.member.grade ? `${props.member.grade} 级` : '' }
+].filter(item => item.value))
 </script>
 
 <template>
   <article class="member-card" :class="{ compact }">
     <NuxtLink class="member-card-main" :to="memberPath">
-      <div class="member-photo">
-        <img :src="member.image || site.logo" :alt="`${displayName} 头像`" loading="lazy">
-      </div>
-
+      <div class="member-photo"><img :src="member.image || site.logo" :alt="`${member.name} 头像`" loading="lazy"></div>
       <div class="member-card-body">
-        <div class="member-card-head">
-          <h3>{{ displayName }}</h3>
-        </div>
-
+        <div class="member-card-head"><h3>{{ member.name }}</h3></div>
         <div class="member-info-list">
-          <div v-for="row in infoRows" :key="row.label" class="member-info-row">
-            <span>{{ row.label }}</span>
-            <strong>{{ row.value }}</strong>
-          </div>
+          <div v-for="row in infoRows" :key="row.label" class="member-info-row"><span>{{ row.label }}</span><strong>{{ row.value }}</strong></div>
         </div>
       </div>
     </NuxtLink>
-
     <div v-if="externalLinks.length && !compact" class="member-card-links">
-      <a
-        v-for="link in externalLinks"
-        :key="link.href"
-        :href="link.href"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        {{ link.label }}
-      </a>
+      <a v-for="link in externalLinks" :key="link.href" :href="link.href" target="_blank" rel="noopener noreferrer">{{ link.label }}</a>
     </div>
   </article>
 </template>

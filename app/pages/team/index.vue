@@ -1,166 +1,47 @@
 <script setup lang="ts">
 import { site } from '~/data/site'
-type Member = Record<string, any>
+import { MEMBER_GROUPS, MEMBER_ROLES, hasMemberSeason, matchesMember, memberGroups, memberSeasons, type Member } from '~/utils/members'
 
-useHead({
-  title: `成员 | ${site.fullName}`
-})
-
-const { data: rawMembers } = await useAsyncData<Member[]>('members:list', () =>
-  queryCollection('members').all() as Promise<Member[]>
-)
-
+useHead({ title: `成员 | ${site.fullName}` })
+const { data: rawMembers } = await useAsyncData('members:list', () => queryCollection('members').all() as Promise<Member[]>)
 const search = ref('')
-const selectedGroup = ref('all')
-
-const groupDefs = [
-  { key: 'all', label: '全部' },
-  { key: 'teachers', label: '指导老师' },
-  { key: 'leaders', label: '团队负责人' },
-  { key: 'mechanical', label: '机械组' },
-  { key: 'control', label: '控制组' },
-  { key: 'circuit', label: '电路组' },
-  { key: 'algorithm', label: '算法组' },
-  { key: 'operation', label: '运营组' },
-  { key: 'advisors', label: '顾问' },
-  { key: 'others', label: '其他' }
-]
-
-const visibleGroupDefs = groupDefs.filter((group) => group.key !== 'all')
-
-const normalize = (value: unknown) => String(value ?? '').toLowerCase()
-const splitSeason = (value: unknown) =>
-  String(value ?? '')
-    .split(/\/|,|，/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-
-const memberName = (member: Member) => String(member.name || '')
-
-const allMembers = computed(() =>
-  [...(rawMembers.value ?? [])].sort((a, b) => {
-    const seasonDiff = Number(b.time ?? 0) - Number(a.time ?? 0)
-    if (seasonDiff) return seasonDiff
-    return memberName(a).localeCompare(memberName(b), 'zh-CN')
-  })
-)
-
-const availableSeasons = computed(() => {
-  const seasons = new Set<string>()
-
-  for (const member of allMembers.value) {
-    splitSeason(member.time).forEach((season) => seasons.add(season))
-    splitSeason(member.advisor).forEach((season) => seasons.add(season))
-  }
-
-  return [...seasons].sort((a, b) => Number(b) - Number(a))
-})
-
 const selectedSeason = ref('all')
+const selectedKind = ref('all')
+const selectedGroup = ref('all')
+const selectedRole = ref('all')
 
-const seasonTabs = computed(() => {
-  return [
-    { label: '全部赛季', value: 'all' },
-    ...availableSeasons.value.map((season) => ({ label: `${season} 赛季`, value: season }))
-  ]
+const allMembers = computed(() => [...(rawMembers.value || [])].sort((a, b) => {
+  const yearDiff = (memberSeasons(b)[0]?.year || 0) - (memberSeasons(a)[0]?.year || 0)
+  return yearDiff || a.name.localeCompare(b.name, 'zh-CN')
+}))
+const seasonTabs = computed(() => [
+  { label: '全部赛季', value: 'all' },
+  ...[...new Set(allMembers.value.flatMap(member => member.seasons.map(item => item.year)))]
+    .sort((a, b) => b - a).map(year => ({ label: `${year} 赛季`, value: String(year) }))
+])
+const kindDefs = [{ value: 'all', label: '全部人员' }, { value: 'teacher', label: '指导老师' }, { value: 'student', label: '学生成员' }]
+const groupDefs = [{ value: 'all', label: '全部组别' }, ...MEMBER_GROUPS.map(value => ({ value, label: value }))]
+const roleDefs = [{ value: 'all', label: '全部职务' }, ...MEMBER_ROLES.map(value => ({ value, label: value }))]
+
+// 切到老师时清除仅适用于学生的筛选，避免显示一个无意义的空列表。
+watch(selectedKind, kind => {
+  if (kind === 'teacher') { selectedGroup.value = 'all'; selectedRole.value = 'all' }
 })
-
-const hasSeason = (member: Member, season: string) => {
-  if (season === 'all') return true
-
-  const memberSeasons = [...splitSeason(member.time), ...splitSeason(member.advisor)]
-  const isTeacher = normalize(member.type).includes('指导老师') || normalize(member.role).includes('指导老师')
-  if (isTeacher && !memberSeasons.length) return true
-
-  return memberSeasons.includes(season)
-}
-
-const isAdvisorForSeason = (member: Member, season: string) => {
-  const advisorSeasons = splitSeason(member.advisor)
-  if (!advisorSeasons.length) return false
-  if (season === 'all') return selectedGroup.value === 'advisors'
-
-  return advisorSeasons.includes(season) && !splitSeason(member.time).includes(season)
-}
-
-const isLeaderForSeason = (member: Member, season: string) => {
-  if (!normalize(member.type).includes('团队负责人')) return false
-  if (season === 'all') return true
-
-  return splitSeason(member.time).includes(season)
-}
-
-const groupFor = (member: Member, season = selectedSeason.value) => {
-  const role = normalize(member.role)
-  const type = normalize(member.type)
-
-  if (type.includes('指导老师') || role.includes('指导老师')) return 'teachers'
-  if (isAdvisorForSeason(member, season)) return 'advisors'
-  if (isLeaderForSeason(member, season) || type.includes('团队负责人')) return 'leaders'
-  if (type.includes('机械') || role.includes('机械')) return 'mechanical'
-  if (type.includes('控制') || role.includes('控制') || role.includes('电控')) return 'control'
-  if (type.includes('电路') || role.includes('电路')) return 'circuit'
-  if (type.includes('算法') || role.includes('算法')) return 'algorithm'
-  if (type.includes('运营') || role.includes('运营')) return 'operation'
-  if (member.advisor) return 'advisors'
-  return 'others'
-}
-
-const matchesSearch = (member: Member) => {
-  const keyword = normalize(search.value).trim()
-  if (!keyword) return true
-
-  const haystack = [
-    member.name,
-    member.role,
-    member.type,
-    member.time,
-    member.advisor,
-    member.grade,
-    member.affiliation
-  ].map(normalize).join(' ')
-
-  return haystack.includes(keyword)
-}
-
-const filteredMembers = computed(() =>
-  allMembers.value.filter((member) => {
-    const group = groupFor(member)
-    const groupMatched = selectedGroup.value === 'all' || selectedGroup.value === group
-    return hasSeason(member, selectedSeason.value) && groupMatched && matchesSearch(member)
-  })
-)
-
-const groupedMembers = computed(() =>
-  visibleGroupDefs
-    .map((group) => ({
-      ...group,
-      members: filteredMembers.value.filter((member) => groupFor(member) === group.key)
-    }))
-    .filter((group) => group.members.length)
-)
-
-const isTeacher = (member: Member) =>
-  normalize(member.type).includes('指导老师') || normalize(member.role).includes('指导老师')
-
-const stats = computed(() => {
-  const season = selectedSeason.value
-  const teachers = allMembers.value.filter((member) =>
-    isTeacher(member) && hasSeason(member, season)
-  )
-  const advisors = allMembers.value.filter((member) =>
-    season === 'all'
-      ? splitSeason(member.advisor).length > 0
-      : splitSeason(member.advisor).includes(season)
-  )
-
-  return [
-    { value: allMembers.value.length, label: '成员档案' },
-    { value: filteredMembers.value.length, label: season === 'all' ? '当前筛选' : `${season} 赛季展示` },
-    { value: teachers.length, label: season === 'all' ? '全部赛季指导老师' : `${season} 赛季指导老师` },
-    { value: advisors.length, label: season === 'all' ? '全部赛季顾问记录' : `${season} 赛季顾问` }
-  ]
-})
+const filteredMembers = computed(() => allMembers.value.filter(member => matchesMember(member, {
+  season: selectedSeason.value, kind: selectedKind.value, group: selectedGroup.value,
+  role: selectedRole.value, search: search.value
+})))
+const sectionFor = (member: Member) => member.kind === 'teacher' ? '指导老师'
+  : selectedGroup.value !== 'all' ? selectedGroup.value : memberGroups(member, selectedSeason.value)[0]
+const groupedMembers = computed(() => ['指导老师', ...MEMBER_GROUPS]
+  .map(label => ({ label, members: filteredMembers.value.filter(member => sectionFor(member) === label) }))
+  .filter(group => group.members.length))
+const stats = computed(() => [
+  { value: allMembers.value.filter(member => member.kind === 'student').length, label: '学生档案' },
+  { value: allMembers.value.filter(member => member.kind === 'teacher' && hasMemberSeason(member, selectedSeason.value)).length, label: '指导老师' },
+  { value: filteredMembers.value.length, label: '当前筛选' },
+  { value: MEMBER_GROUPS.length, label: '技术组别' }
+])
 </script>
 
 <template>
@@ -169,69 +50,52 @@ const stats = computed(() => {
       <div>
         <p class="eyebrow">Team Roster</p>
         <h1>成员</h1>
-        <p>
-          按赛季、职责和专业方向浏览成员档案。当前保留原站成员资料作为填写模板，燕鹰成员信息后续更新。
-        </p>
+        <p>按赛季、技术组和职务浏览成员档案。指导老师资料暂保留原站档案，所属学校与学院见个人介绍。</p>
       </div>
     </section>
-
     <section class="stats-band members-stats" aria-label="成员概览">
-      <div v-for="item in stats" :key="item.label" class="stat-item">
-        <strong>{{ item.value }}</strong>
-        <span>{{ item.label }}</span>
-      </div>
+      <div v-for="item in stats" :key="item.label" class="stat-item"><strong>{{ item.value }}</strong><span>{{ item.label }}</span></div>
     </section>
-
     <section class="member-controls" aria-label="成员筛选">
       <div class="member-search">
         <label for="member-search">搜索成员</label>
-        <input id="member-search" v-model="search" type="search" placeholder="姓名、学院、方向、赛季">
+        <input id="member-search" v-model="search" type="search" placeholder="姓名、学校、学院、组别、职务或赛季">
       </div>
-
-      <div class="filter-row" aria-label="赛季筛选">
-        <button
-          v-for="season in seasonTabs"
-          :key="season.value"
-          class="filter-chip"
-          :class="{ active: selectedSeason === season.value }"
-          type="button"
-          @click="selectedSeason = season.value"
-        >
-          {{ season.label }}
-        </button>
+      <div class="member-filter">
+        <span class="member-filter-label">赛季</span>
+        <div class="filter-row" aria-label="赛季筛选">
+          <button v-for="season in seasonTabs" :key="season.value" class="filter-chip" :class="{ active: selectedSeason === season.value }" :aria-pressed="selectedSeason === season.value" type="button" @click="selectedSeason = season.value">{{ season.label }}</button>
+        </div>
       </div>
-
-      <div class="filter-row" aria-label="方向筛选">
-        <button
-          v-for="group in groupDefs"
-          :key="group.key"
-          class="filter-chip"
-          :class="{ active: selectedGroup === group.key }"
-          type="button"
-          @click="selectedGroup = group.key"
-        >
-          {{ group.label }}
-        </button>
+      <div class="member-filter">
+        <span class="member-filter-label">身份</span>
+        <div class="filter-row" aria-label="身份筛选">
+          <button v-for="kind in kindDefs" :key="kind.value" class="filter-chip" :class="{ active: selectedKind === kind.value }" :aria-pressed="selectedKind === kind.value" type="button" @click="selectedKind = kind.value">{{ kind.label }}</button>
+        </div>
       </div>
+      <template v-if="selectedKind !== 'teacher'">
+        <div class="member-filter">
+          <span class="member-filter-label">技术组</span>
+          <div class="filter-row" aria-label="组别筛选">
+            <button v-for="group in groupDefs" :key="group.value" class="filter-chip" :class="{ active: selectedGroup === group.value }" :aria-pressed="selectedGroup === group.value" type="button" @click="selectedGroup = group.value">{{ group.label }}</button>
+          </div>
+        </div>
+        <div class="member-filter">
+          <span class="member-filter-label">职务</span>
+          <div class="filter-row" aria-label="职务筛选">
+            <button v-for="role in roleDefs" :key="role.value" class="filter-chip" :class="{ active: selectedRole === role.value }" :aria-pressed="selectedRole === role.value" type="button" @click="selectedRole = role.value">{{ role.label }}</button>
+          </div>
+        </div>
+      </template>
     </section>
-
     <section class="member-directory" aria-label="成员列表">
       <div v-if="groupedMembers.length" class="member-groups">
-        <section v-for="group in groupedMembers" :key="group.key" class="member-group">
-          <div class="section-heading compact">
-            <p class="eyebrow">{{ group.members.length }} people</p>
-            <h2>{{ group.label }}</h2>
-          </div>
-
-          <div class="member-grid">
-            <MemberCard v-for="member in group.members" :key="member.name" :member="member" />
-          </div>
+        <section v-for="group in groupedMembers" :key="group.label" class="member-group">
+          <div class="section-heading compact"><p class="eyebrow">{{ group.members.length }} 人</p><h2>{{ group.label }}</h2></div>
+          <div class="member-grid"><MemberCard v-for="member in group.members" :key="member.name" :member="member" :season="selectedSeason" /></div>
         </section>
       </div>
-
-      <div v-else class="empty-state">
-        没有匹配的成员。
-      </div>
+      <div v-else class="empty-state">没有匹配的成员。</div>
     </section>
   </main>
 </template>

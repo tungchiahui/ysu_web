@@ -424,3 +424,18 @@
   display: grid;
   gap: 12px;
 }
+
+.member-filter {
+  display: grid;
+  gap: 8px;
+}
+
+.member-filter-label {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.member-profile-content.no-related {
+  grid-template-columns: minmax(0, 1fr);
+}
