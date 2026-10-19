@@ -21,7 +21,15 @@ export function wikiAuthorProfiles(authors, members, defaultAvatar) {
     return {
       name,
       image: member?.image || defaultAvatar,
-      href: member ? `/team/${encodeURIComponent(member.name)}` : null
+      href: member ? `/team/${encodeURIComponent(member.name)}` : `/authors/${encodeURIComponent(name)}`
     }
   })
+}
+
+export function wikiPagesByAuthor(pages, name) {
+  const normalizePath = value => (value || '').replace(/\/$/, '')
+  const indexes = new Map(pages.filter(page => page.isWikiIndex)
+    .map(page => [normalizePath(page.path), page]))
+  return pages.filter(page => resolveWikiAuthors(page, indexes.get(normalizePath(page.docRoot))).includes(name))
+    .sort((a, b) => a.path.localeCompare(b.path))
 }

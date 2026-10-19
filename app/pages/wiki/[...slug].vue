@@ -727,16 +727,10 @@ function normalizePath(path: string) {
             <h1>{{ page.title }}</h1>
             <div v-if="pageAuthorProfiles.length" class="wiki-authors" aria-label="文章作者">
               <span class="wiki-authors-label">作者：</span>
-              <template v-for="author in pageAuthorProfiles" :key="author.name">
-                <NuxtLink v-if="author.href" class="wiki-author" :to="author.href" :aria-label="`查看作者 ${author.name} 的成员资料`">
-                  <img :src="author.image" alt="" width="32" height="32" loading="lazy">
-                  <span>{{ author.name }}</span>
-                </NuxtLink>
-                <span v-else class="wiki-author">
-                  <img :src="author.image" alt="" width="32" height="32" loading="lazy">
-                  <span>{{ author.name }}</span>
-                </span>
-              </template>
+              <NuxtLink v-for="author in pageAuthorProfiles" :key="author.name" class="wiki-author" :to="author.href" :aria-label="`查看作者 ${author.name} 的资料`">
+                <img :src="author.image" alt="" width="32" height="32" loading="lazy">
+                <span>{{ author.name }}</span>
+              </NuxtLink>
             </div>
           </header>
 

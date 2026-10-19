@@ -1,8 +1,9 @@
-import { existsSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { getWikiContentMeta } from './utils/wiki-content-meta'
 import site from './.content-data/site.json'
 import remarkWikiLinks from './utils/remark-wiki-links'
+import { parse } from 'yaml'
 
 const getMarkdownFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -18,6 +19,14 @@ const getMarkdownFiles = (dir: string): string[] =>
 const memberRoutes = existsSync('content/members')
   ? getMarkdownFiles('content/members')
     .map((file) => `/team/${basename(file, '.md')}`)
+  : []
+
+const authorRoutes = existsSync('content/wiki')
+  ? [...new Set(getMarkdownFiles('content/wiki').flatMap((file) => {
+    const frontmatter = readFileSync(file, 'utf8').match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)
+    const authors = frontmatter ? parse(frontmatter[1])?.authors : []
+    return Array.isArray(authors) ? authors.map(name => String(name).trim()).filter(Boolean) : []
+  }))].map(name => `/authors/${encodeURIComponent(name)}`)
   : []
 
 export default defineNuxtConfig({
@@ -128,6 +137,7 @@ export default defineNuxtConfig({
     '/news/**': { prerender: true },
     '/wiki': { prerender: true },
     '/wiki/**': { prerender: true },
+    '/authors/**': { prerender: true },
     '/docs': { redirect: '/wiki' },
     '/recruitment': { prerender: true },
     '/contact': { prerender: true }
@@ -137,7 +147,7 @@ export default defineNuxtConfig({
       // 限制预渲染并发，避免大量内容查询同时进行时出现空白产物。
       concurrency: 4,
       crawlLinks: true,
-      routes: ['/', '/research', '/team', '/news', '/wiki', '/recruitment', '/contact', ...memberRoutes]
+      routes: ['/', '/research', '/team', '/news', '/wiki', '/recruitment', '/contact', ...memberRoutes, ...authorRoutes]
     }
   }
 })
