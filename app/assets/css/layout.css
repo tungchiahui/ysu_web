@@ -200,6 +200,12 @@
   border-radius: 8px;
 }
 
+.hero-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 18px;
+}
+
 .hero-source {
   display: inline-block;
   margin-top: 12px;

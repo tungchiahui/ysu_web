@@ -18,8 +18,8 @@ const stats = site.overview
     <section class="home-hero">
       <video
         class="hero-video"
-        src="/images/backgroundvideo.mp4"
-        poster="/images/background.jpg"
+        :src="site.heroMedia.video"
+        :poster="site.heroMedia.poster"
         autoplay
         muted
         loop
@@ -33,7 +33,10 @@ const stats = site.overview
         <p class="hero-summary">
           {{ site.description }}
         </p>
-        <a class="hero-source" :href="site.introSources[0].url" target="_blank" rel="noopener noreferrer">简介参考：燕山大学官方介绍 ↗</a>
+        <div class="hero-sources">
+          <a class="hero-source" :href="site.introSources[0].url" target="_blank" rel="noopener noreferrer">简介参考：燕山大学官方介绍 ↗</a>
+          <a class="hero-source" :href="site.heroMedia.sourceUrl" target="_blank" rel="noopener noreferrer">{{ site.heroMedia.sourceLabel }} ↗</a>
+        </div>
 
         <div class="hero-actions" aria-label="常用链接">
           <a
