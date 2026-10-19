@@ -3,6 +3,7 @@ import { site } from '~/data/site'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import mediumZoom from 'medium-zoom'
 import { compareWikiChapters, numberWikiChapters } from '~~/utils/wiki-chapters'
+import { resolveWikiAuthors, wikiAuthorProfiles } from '~~/utils/wiki-authors.mjs'
 
 interface TocDisplayLink {
   id: string
@@ -16,6 +17,7 @@ interface WikiPage {
   path: string
   stem?: string
   title: string
+  authors?: string[] | null
   date?: string
   chapter?: string
   chapterOrder?: string
@@ -63,6 +65,7 @@ const { data: docItems } = await useAsyncData<WikiPage[]>(
         'path',
         'stem',
         'title',
+        'authors',
         'date',
         'chapterOrder',
         'chapterDepth',
@@ -77,7 +80,12 @@ const { data: docItems } = await useAsyncData<WikiPage[]>(
   { watch: [pageDocKey] }
 )
 
-const docIndex = computed(() => docItems.value?.find((item) => item.isWikiIndex) || null)
+const docIndex = computed(() => docItems.value?.find((item) => item.isWikiIndex && normalizePath(item.path) === normalizePath(page.value?.docRoot || '')) || null)
+const pageAuthors = computed(() => resolveWikiAuthors(page.value, docIndex.value))
+const { data: authorMembers } = await useAsyncData('wiki:author-members', () =>
+  queryCollection('members').select('name', 'image').all()
+)
+const pageAuthorProfiles = computed(() => wikiAuthorProfiles(pageAuthors.value, authorMembers.value, site.logo))
 const chapterItems = computed(() =>
   numberWikiChapters((docItems.value || []).filter((item) => !item.isWikiIndex))
     .sort(compareWikiChapters)
@@ -717,6 +725,19 @@ function normalizePath(path: string) {
               第 {{ currentChapter }} 节
             </div>
             <h1>{{ page.title }}</h1>
+            <div v-if="pageAuthorProfiles.length" class="wiki-authors" aria-label="文章作者">
+              <span class="wiki-authors-label">作者：</span>
+              <template v-for="author in pageAuthorProfiles" :key="author.name">
+                <NuxtLink v-if="author.href" class="wiki-author" :to="author.href" :aria-label="`查看作者 ${author.name} 的成员资料`">
+                  <img :src="author.image" alt="" width="32" height="32" loading="lazy">
+                  <span>{{ author.name }}</span>
+                </NuxtLink>
+                <span v-else class="wiki-author">
+                  <img :src="author.image" alt="" width="32" height="32" loading="lazy">
+                  <span>{{ author.name }}</span>
+                </span>
+              </template>
+            </div>
           </header>
 
           <div class="wiki-content-body">

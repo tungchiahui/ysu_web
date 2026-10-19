@@ -16,7 +16,10 @@
     "pregenerate": "npm run content:sync && npm run members:check && npm run wiki:check",
     "preview": "nuxt preview",
     "members:check": "node scripts/member-check.mjs",
-    "members:test": "node --experimental-strip-types --test tests/members.test.mjs"
+    "members:test": "node --experimental-strip-types --test tests/members.test.mjs",
+    "wiki:test": "node --test tests/wiki-authors.test.mjs",
+    "wiki:output-check": "node --experimental-strip-types scripts/wiki-output-check.mjs",
+    "postgenerate": "npm run wiki:output-check"
   },
   "dependencies": {
     "@nuxt/content": "^3.13.0",

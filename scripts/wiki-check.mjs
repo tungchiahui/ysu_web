@@ -1,11 +1,15 @@
 import { promises as fs } from 'node:fs'
 import path from 'node:path'
 import { pinyin } from 'pinyin-pro'
+import { parseDocument } from 'yaml'
+import { z } from '@nuxt/content'
+import { wikiFrontmatterFields } from '../utils/wiki-authors.mjs'
 
 const rootDir = process.cwd()
 const wikiDir = path.join(rootDir, 'content', 'wiki')
 const files = await collectMarkdownFiles(wikiDir)
 const errors = []
+const frontmatterSchema = z.object(wikiFrontmatterFields(z)).strict()
 const paths = new Map()
 const validWikiPaths = new Set(['/wiki'])
 const ordersByDoc = new Map()
@@ -52,6 +56,19 @@ for (const file of files) {
 for (const file of files) {
   const source = await fs.readFile(file, 'utf8')
   const relativePath = path.relative(rootDir, file).replace(/\\/g, '/')
+  const frontmatter = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)
+  if (!frontmatter) {
+    errors.push(`${relativePath}: 缺少 YAML frontmatter`)
+  } else {
+    const document = parseDocument(frontmatter[1], { uniqueKeys: true })
+    if (document.errors.length) {
+      errors.push(...document.errors.map(error => `${relativePath}: ${error.message}`))
+    } else {
+      const result = frontmatterSchema.safeParse(document.toJS())
+      if (!result.success) errors.push(...result.error.issues.map(issue => `${relativePath}: ${issue.path.join('.') || 'frontmatter'} — ${issue.message}`))
+    }
+  }
+
   const legacyLinks = source.match(/\/wiki\/[^)\s"'<>]+\/ch\d+(?:-\d+)*-[^)\s"'<>#]+/gi) || []
 
   for (const link of legacyLinks) {
@@ -75,7 +92,7 @@ if (errors.length) {
   errors.forEach(error => console.error(`- ${error}`))
   process.exitCode = 1
 } else {
-  console.log(`Wiki 检查通过：${files.length} 个文件，order、URL 与站内链接均正常。`)
+  console.log(`Wiki 检查通过：${files.length} 个文件，frontmatter、作者、order、URL 与站内链接均正常。`)
 }
 
 async function collectMarkdownFiles(dir) {

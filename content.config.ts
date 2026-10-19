@@ -1,5 +1,6 @@
 import { defineCollection, defineContentConfig, z } from '@nuxt/content'
 import { memberFields } from './utils/member-schema.mjs'
+import { wikiFrontmatterFields } from './utils/wiki-authors.mjs'
 
 export default defineContentConfig({
   collections: {
@@ -25,7 +26,7 @@ export default defineContentConfig({
       type: 'page',
       source: 'wiki/**/*.md',
       schema: z.object({
-        title: z.string(),
+        ...wikiFrontmatterFields(z),
         date: z.string().nullable().optional(),
         chapterOrder: z.string().nullable().optional(),
         chapterDepth: z.number().nullable().optional(),
