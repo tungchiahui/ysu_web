@@ -55,6 +55,18 @@ CONTENT_REF=main
 
 GitHub Actions 自带的 `GITHUB_TOKEN` 通常只授权当前仓库，读取另一个私有仓库需额外配置凭据。私有仓库只保护源文件的访问；最终渲染到公开网站的资料仍公开可见。
 
+## 部署到 EdgeOne Pages / Makers
+
+本项目采用静态生成，仓库根目录的 `edgeone.json` 已配置构建命令 `npm run generate`、安装命令 `npm ci`、输出目录 `.output/public` 和 Node.js `22.17.1`。
+
+在控制台导入 `tungchiahui/ysu_web`，生产分支选 `main`，根目录 `./`，框架预设选其他（Other），按静态网站部署。界面中的构建、安装和输出目录与上述配置保持一致。Node 版本由仓库配置指定，无需再设置环境变量。
+
+公开内容仓库默认从 `content-source.json` 读取，不需要额外凭据，也不要在 EO 设置 `CONTENT_LOCAL_PATH`。如果以后迁移内容仓库，可改配置文件或设置 `CONTENT_REPOSITORY` / `CONTENT_REF`；改为私有时再配置只读 `CONTENT_GIT_TOKEN`。
+
+首次部署前刷新仓库选择，确保使用包含本次改造和 `edgeone.json` 的最新 `main` 提交。部署成功后先验证首页、Wiki、成员页面和视频，再绑定自定义域名。
+
+网站仓库 `main` 提交会触发 EO 的 Git 集成部署。仅提交内容仓库不会自动触发 EO，需在 EO 重新部署，或另行连接部署钩子；本仓库的 Build 工作流只生成产物。
+
 ## 持续构建
 
 `.github/workflows/build.yml` 在网站代码更新或手动触发时拉取内容、检查 Wiki、生成并上传静态产物，暂不部署到线上。

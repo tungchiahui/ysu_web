@@ -1,0 +1,6 @@
+{
+  "buildCommand": "npm run generate",
+  "installCommand": "npm ci",
+  "outputDirectory": ".output/public",
+  "nodeVersion": "22.17.1"
+}
