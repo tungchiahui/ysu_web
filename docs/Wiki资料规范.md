@@ -50,4 +50,6 @@ authors:
 
 `npm run wiki:test` 验证单人/多人作者、缺省继承、章节覆盖、显式空数组，以及空姓名、重复姓名等错误输入，并验证成员头像、详情地址、外部作者页入口，以及作者页文章列表的继承与覆盖。
 
-静态生成结束后，`postgenerate` 自动运行 `npm run wiki:output-check`，逐一检查源文档对应的 HTML 存在、非空且包含文章标题区域；缺失或空白时停止发布。预渲染并发固定为 4，避免构建机器核心数量变化导致过多页面同时处理。
+Nuxt 静态生成完成后，在 Nitro `compiled` 生命周期检查本次构建的实际输出目录：本地通常是 `.output/public`，EO Nuxt 适配器会改为 `.edgeone/assets`。检查逐一确认源文档对应的 HTML 存在、非空且包含文章标题区域；缺失或空白时停止构建，不使用其他目录的旧产物回退。预渲染并发固定为 4，避免构建机器核心数量变化导致过多页面同时处理。
+
+手动复查本地产物可运行 `npm run wiki:output-check`；检查 EO 目录时运行 `npm run wiki:output-check -- .edgeone/assets`。`npm run wiki:output-test` 验证两个目录以及缺失、空白页面和旧产物干扰的情况。

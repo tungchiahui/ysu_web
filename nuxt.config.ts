@@ -4,6 +4,7 @@ import { getWikiContentMeta } from './utils/wiki-content-meta'
 import site from './.content-data/site.json'
 import remarkWikiLinks from './utils/remark-wiki-links'
 import { parse } from 'yaml'
+import { validateWikiOutput } from './scripts/wiki-output-check.mjs'
 
 const getMarkdownFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -88,6 +89,13 @@ export default defineNuxtConfig({
     }
   },
   hooks: {
+    'nitro:init'(nitro) {
+      if (nitro.options.dev || !nitro.options.static) return
+      // EO 的 Nuxt 适配器会重写 publicDir，必须检查本次构建真正的输出目录。
+      nitro.hooks.hook('compiled', async () => {
+        await validateWikiOutput(nitro.options.output.publicDir, nitro.options.rootDir)
+      })
+    },
     'content:file:afterParse'({ content }) {
       const wikiMeta = getWikiContentMeta(content.stem)
 

@@ -14,7 +14,7 @@ npm ci
 npm run dev
 ```
 
-`dev`、`build`、`generate` 会先拉取内容；开发及生产构建先校验成员资料，生产构建再运行 Wiki 检查。生成的静态网站位于 `.output/public`，`dist` 是指向此目录的便捷链接。
+`dev`、`build`、`generate` 会先拉取内容；开发及生产构建先校验成员资料，生产构建再运行 Wiki 检查。本地生成的静态网站位于 `.output/public`，`dist` 是指向此目录的便捷链接。EO 的 Nuxt 适配器可能将实际输出目录改为 `.edgeone/assets`；Wiki 产物检查会读取 Nitro 最终的输出目录，不固定检查本地路径。
 
 ```sh
 npm run generate

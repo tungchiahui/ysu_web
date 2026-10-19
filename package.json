@@ -19,7 +19,7 @@
     "members:test": "node --experimental-strip-types --test tests/members.test.mjs",
     "wiki:test": "node --test tests/wiki-authors.test.mjs",
     "wiki:output-check": "node --experimental-strip-types scripts/wiki-output-check.mjs",
-    "postgenerate": "npm run wiki:output-check"
+    "wiki:output-test": "node --experimental-strip-types --test tests/wiki-output.test.mjs"
   },
   "dependencies": {
     "@nuxt/content": "^3.13.0",
