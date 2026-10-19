@@ -33,11 +33,6 @@ const stats = site.overview
         <p class="hero-summary">
           {{ site.description }}
         </p>
-        <div class="hero-sources">
-          <a class="hero-source" :href="site.introSources[0].url" target="_blank" rel="noopener noreferrer">简介参考：燕山大学官方介绍 ↗</a>
-          <a class="hero-source" :href="site.heroMedia.sourceUrl" target="_blank" rel="noopener noreferrer">{{ site.heroMedia.sourceLabel }} ↗</a>
-        </div>
-
         <div class="hero-actions" aria-label="常用链接">
           <a
             v-for="link in heroLinks"

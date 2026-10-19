@@ -5,44 +5,44 @@
   padding: 96px max(24px, calc((100vw - var(--content)) / 2)) 72px;
   background:
     linear-gradient(90deg, rgba(14, 26, 32, 0.9), rgba(14, 26, 32, 0.58)),
-    url('/images/cheer.png') center / cover;
+    url('/images/team/arena-testing.jpg') center / cover;
   color: #ffffff;
 }
 
 .members-hero {
   background:
     linear-gradient(90deg, rgba(14, 26, 32, 0.92), rgba(14, 26, 32, 0.54)),
-    url('/images/background_footer.png') center / cover;
+    url('/images/team/team-cheer.jpg') center 35% / cover;
 }
 
 .recruitment-hero {
   background:
     linear-gradient(90deg, rgba(14, 26, 32, 0.9), rgba(14, 26, 32, 0.54)),
-    url('/images/joinus.jpg') center / cover;
+    url('/images/team/robot-preparation.jpg') center / cover;
 }
 
 .contact-hero {
   background:
     linear-gradient(90deg, rgba(14, 26, 32, 0.9), rgba(14, 26, 32, 0.5)),
-    url('/images/cooporate.jpg') center / cover;
+    url('/images/team/robot-collaboration.jpg') center / cover;
 }
 
 .projects-hero {
   background:
     linear-gradient(90deg, rgba(14, 26, 32, 0.9), rgba(14, 26, 32, 0.5)),
-    url('/images/cooporate.jpg') center / cover;
+    url('/images/team/robot-workbench.jpg') center / cover;
 }
 
 .news-hero {
   background:
     linear-gradient(90deg, rgba(14, 26, 32, 0.9), rgba(14, 26, 32, 0.54)),
-    url('/images/news.png') center / cover;
+    url('/images/team/team-moment.jpg') center 35% / cover;
 }
 
 .wiki-hero {
   background:
     linear-gradient(90deg, rgba(14, 26, 32, 0.93), rgba(14, 26, 32, 0.5)),
-    url('/images/background_footer.png') center / cover;
+    url('/images/team/electronics-detail.jpg') center / cover;
 }
 
 .page-hero > div {

@@ -2,6 +2,7 @@ import { existsSync, readdirSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { getWikiContentMeta } from './utils/wiki-content-meta'
 import site from './.content-data/site.json'
+import remarkWikiLinks from './utils/remark-wiki-links'
 
 const getMarkdownFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -25,7 +26,12 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
   content: {
     build: {
-      transformers: ['./transformers/wiki-pinyin-path.ts']
+      transformers: ['./transformers/wiki-pinyin-path.ts'],
+      markdown: {
+        remarkPlugins: {
+          'wiki-links': { instance: remarkWikiLinks }
+        }
+      }
     }
   },
   mdc: {

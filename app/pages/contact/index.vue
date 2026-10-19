@@ -45,7 +45,7 @@ const socialLinks = [...site.contacts.socials, { label: '战队微博', href: si
       </div>
 
       <div class="contact-visual">
-        <img src="/images/cooporate.jpg" alt="原站合作交流展示模板配图">
+        <img src="/images/team/robot-collaboration.jpg" alt="燕鹰战队成员协作调试机器人">
       </div>
     </section>
 
