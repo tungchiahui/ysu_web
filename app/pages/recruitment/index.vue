@@ -1,25 +1,26 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 useHead({
-  title: '纳新 | 山东理工大学 Vinci 机器人队'
+  title: `纳新 | ${site.fullName}`
 })
 
 const quickLinks = [
   {
     label: '填写报名表',
     text: '提交基础信息后，我们会根据招新安排联系你参加面试或技术交流。',
-    href: 'https://docs.qq.com/form/page/DTk9Ha0hsTHpwa0FL',
+    href: site.recruitment.form,
     external: true
   },
   {
     label: '查看团队介绍',
-    text: '通过飞书文档了解训练方向、队伍结构和 Robocon 赛事内容。',
-    href: 'https://sdutvincirobot.feishu.cn/wiki/HjNWwwrSCirI2gkXI7XcNMIXnUh?from=from_copylink',
+    text: '通过飞书文档了解训练方向、队伍结构和赛事内容。',
+    href: site.recruitment.introduction,
     external: true
   },
   {
     label: '加入咨询群',
-    text: 'QQ群 1033839949，适合先咨询方向、时间投入和报名安排。',
-    href: 'https://qm.qq.com/q/Obiyw4DIkO',
+    text: `QQ群 ${site.recruitment.groupNumber}，适合先咨询方向、时间投入和报名安排。`,
+    href: site.recruitment.group,
     external: true
   }
 ]
@@ -77,10 +78,10 @@ const process = [
   <main>
     <section class="page-hero recruitment-hero">
       <div>
-        <p class="eyebrow">Join Vinci</p>
+        <p class="eyebrow">Join YSU</p>
         <h1>加入我们</h1>
         <p>
-          Vinci 机器人队欢迎所有热爱机器人和工程实践的同学。这里有真实赛场、长期训练和一群愿意把复杂问题拆开做透的人。
+          {{ site.shortName }}欢迎所有热爱机器人和工程实践的同学。这里有真实赛场、长期训练和一群愿意把复杂问题拆开做透的人。
         </p>
       </div>
     </section>
@@ -95,7 +96,7 @@ const process = [
         <div class="join-actions">
           <a
             class="action-button primary"
-            href="https://docs.qq.com/form/page/DTk9Ha0hsTHpwa0FL"
+            :href="site.recruitment.form"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -103,7 +104,7 @@ const process = [
           </a>
           <a
             class="action-button"
-            href="https://qm.qq.com/q/Obiyw4DIkO"
+            :href="site.recruitment.group"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -113,7 +114,7 @@ const process = [
       </div>
 
       <div class="join-photo">
-        <img src="/images/joinus.jpg" alt="Vinci 机器人队纳新展示">
+        <img src="/images/joinus.jpg" alt="原站纳新展示模板配图">
       </div>
     </section>
 
@@ -173,9 +174,9 @@ const process = [
 
       <iframe
         class="embedded-doc"
-        src="https://sdutvincirobot.feishu.cn/wiki/HjNWwwrSCirI2gkXI7XcNMIXnUh?from=from_copylink"
+        :src="site.recruitment.introduction"
         loading="lazy"
-        title="Vinci 机器人队团队介绍"
+        :title="`${site.shortName}团队介绍（模板）`"
       />
     </section>
   </main>

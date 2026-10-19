@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 type Member = Record<string, any>
 
 const props = defineProps<{
@@ -69,7 +70,7 @@ const infoRows = computed(() => [
   <article class="member-card" :class="{ compact }">
     <NuxtLink class="member-card-main" :to="memberPath">
       <div class="member-photo">
-        <img :src="member.image || '/images/logo.png'" :alt="`${displayName} 头像`" loading="lazy">
+        <img :src="member.image || site.logo" :alt="`${displayName} 头像`" loading="lazy">
       </div>
 
       <div class="member-card-body">

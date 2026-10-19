@@ -78,8 +78,8 @@
 
 .nav-link:hover,
 .nav-link.active {
-  border-color: rgba(201, 52, 52, 0.22);
-  background: rgba(201, 52, 52, 0.08);
+  border-color: rgba(38, 108, 186, 0.22);
+  background: rgba(38, 108, 186, 0.08);
   color: var(--red-dark);
 }
 
@@ -135,7 +135,7 @@
 }
 
 .nav-toggle:hover {
-  border-color: rgba(201, 52, 52, 0.28);
+  border-color: rgba(38, 108, 186, 0.28);
   color: var(--red-dark);
 }
 
@@ -184,4 +184,27 @@
 .nav-toggle.is-open .nav-toggle-bars span:nth-child(3) {
   top: 6px;
   transform: rotate(-45deg);
+}
+
+.template-notice {
+  padding: 9px 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-tint);
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.brand-logo,
+.footer-brand img {
+  border-radius: 8px;
+}
+
+.hero-source {
+  display: inline-block;
+  margin-top: 12px;
+  color: #d5eaff;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }

@@ -4,3 +4,8 @@ node_modules
 .data
 .env
 npm-debug.log*
+content/
+public/
+member-submission-kit/
+.content-data/
+.content-sync-*/

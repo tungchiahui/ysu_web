@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 type NewsItem = Record<string, any>
 
 const route = useRoute()
@@ -17,7 +18,7 @@ if (!page.value) {
 }
 
 useHead(() => ({
-  title: `${page.value?.title || '新闻'} | Vinci 机器人队`
+  title: `${page.value?.title || '新闻'} | ${site.shortName}`
 }))
 
 const formatDate = (value: unknown) => {

@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 type Member = Record<string, any>
 
 useHead({
-  title: '成员 | 山东理工大学 Vinci 机器人队'
+  title: `成员 | ${site.fullName}`
 })
 
 const { data: rawMembers } = await useAsyncData<Member[]>('members:list', () =>
@@ -169,7 +170,7 @@ const stats = computed(() => {
         <p class="eyebrow">Team Roster</p>
         <h1>成员</h1>
         <p>
-          这里按赛季、职责和专业方向重新组织成员信息。成员档案字段已经规整，页面逻辑改成更适合浏览和筛选的结构。
+          按赛季、职责和专业方向浏览成员档案。当前保留原站成员资料作为填写模板，燕鹰成员信息后续更新。
         </p>
       </div>
     </section>

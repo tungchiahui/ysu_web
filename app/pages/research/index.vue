@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 import {
   roboconAchievements,
   roboconAwardEntryCount,
@@ -6,7 +7,7 @@ import {
 } from '~/data/robocon-achievements'
 
 useHead({
-  title: '成果 | 山东理工大学 Vinci 机器人队'
+  title: `成果 | ${site.fullName}`
 })
 
 const highlights = [
@@ -21,9 +22,9 @@ const highlights = [
     <section class="page-hero research-hero">
       <div>
         <p class="eyebrow">多方面综合发展</p>
-        <h1>我们的成果</h1>
+        <h1>{{ site.templateMode ? '成果展示模板' : '我们的成果' }}</h1>
         <p>
-          Vinci 机器人队以全国大学生机器人大赛 Robocon 为主线，在长期训练和赛场反馈中积累机械、电控、算法与协作经验。
+          现阶段保留原站赛事成绩作为展示模板，燕鹰战队的正式成果将陆续整理。
         </p>
       </div>
     </section>

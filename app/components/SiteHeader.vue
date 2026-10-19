@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 const route = useRoute()
 
 type Theme = 'light' | 'dark'
@@ -33,7 +34,7 @@ const applyTheme = (nextTheme: Theme, persist = true) => {
   document.documentElement.dataset.theme = nextTheme
 
   if (persist) {
-    localStorage.setItem('vinci-theme', nextTheme)
+    localStorage.setItem('ysu-theme', nextTheme)
   }
 }
 
@@ -64,7 +65,7 @@ watch(() => route.fullPath, () => {
 })
 
 onMounted(() => {
-  const storedTheme = localStorage.getItem('vinci-theme')
+  const storedTheme = localStorage.getItem('ysu-theme')
   applyTheme(storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : preferredTheme(), Boolean(storedTheme))
 })
 </script>
@@ -72,10 +73,10 @@ onMounted(() => {
 <template>
   <header class="site-header">
     <NuxtLink class="brand" to="/" aria-label="返回首页">
-      <img class="brand-logo" src="/images/logo.png" alt="Vinci 机器人队标志">
+      <img class="brand-logo" :src="site.logo" :alt="site.logoAlt">
       <span class="brand-copy">
-        <span class="brand-title">山理工 Vinci 机器人队</span>
-        <span class="brand-subtitle">创新，无畏，团结，拼搏</span>
+        <span class="brand-title">{{ site.headerName }}</span>
+        <span class="brand-subtitle">{{ site.tagline }}</span>
       </span>
     </NuxtLink>
 

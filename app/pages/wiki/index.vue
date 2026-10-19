@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 interface WikiMetaItem {
   path: string
   date?: string
@@ -7,7 +8,7 @@ interface WikiMetaItem {
 }
 
 useHead({
-  title: 'Wiki | 山东理工大学 Vinci 机器人队'
+  title: `Wiki | ${site.fullName}`
 })
 
 const { data: wikiMeta } = await useAsyncData<WikiMetaItem[]>('wiki:index-stats', () =>

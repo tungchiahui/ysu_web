@@ -9,8 +9,8 @@
   --surface-tint: #f9fbfa;
   --surface-glass: rgba(255, 255, 255, 0.72);
   --line: #dce3e0;
-  --red: #c93434;
-  --red-dark: #9f2525;
+  --red: #266cba;
+  --red-dark: #1d548e;
   --cyan: #008996;
   --green: #2f7d55;
   --gold: #b97a13;
@@ -42,8 +42,8 @@
   --surface-tint: #151e22;
   --surface-glass: rgba(24, 33, 37, 0.78);
   --line: #2c3a40;
-  --red: #e05252;
-  --red-dark: #ff9a9a;
+  --red: #63a4ed;
+  --red-dark: #a8d1ff;
   --cyan: #3bc8d4;
   --green: #7bd09b;
   --gold: #e6b65b;
@@ -75,8 +75,8 @@
     --surface-tint: #151e22;
     --surface-glass: rgba(24, 33, 37, 0.78);
     --line: #2c3a40;
-    --red: #e05252;
-    --red-dark: #ff9a9a;
+    --red: #63a4ed;
+    --red-dark: #a8d1ff;
     --cyan: #3bc8d4;
     --green: #7bd09b;
     --gold: #e6b65b;

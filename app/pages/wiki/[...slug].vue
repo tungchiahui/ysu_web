@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import mediumZoom from 'medium-zoom'
 import { compareWikiChapters, numberWikiChapters } from '~~/utils/wiki-chapters'
@@ -115,7 +116,7 @@ const pageTitle = computed(() => {
 })
 
 useHead(() => ({
-  title: `${pageTitle.value} | Vinci Wiki`,
+  title: `${pageTitle.value} | ${site.shortName} Wiki`,
   meta: [
     { name: 'description', content: page.value?.title || '' },
     { property: 'og:title', content: pageTitle.value }

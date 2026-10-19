@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      content_ref:
+        description: Content branch, tag or full commit SHA (optional)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CONTENT_REPOSITORY: ${{ vars.CONTENT_REPOSITORY }}
+      CONTENT_REF: ${{ inputs.content_ref || vars.CONTENT_REF }}
+      CONTENT_GIT_TOKEN: ${{ secrets.CONTENT_GIT_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run generate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ysu-website
+          path: .output/public
+          include-hidden-files: true

@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 useHead({
-  title: '项目 | 山东理工大学 Vinci 机器人队'
+  title: `项目 | ${site.fullName}`
 })
 </script>
 

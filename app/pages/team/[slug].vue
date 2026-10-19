@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 type Member = Record<string, any>
 
 const route = useRoute()
@@ -20,7 +21,7 @@ const { data: rawMembers } = await useAsyncData<Member[]>('members:related', () 
 )
 
 useHead(() => ({
-  title: `${member.value?.name || '成员'} | Vinci 机器人队`
+  title: `${member.value?.name || '成员'} | ${site.shortName}`
 }))
 
 const cleanText = (value: unknown) =>
@@ -106,7 +107,7 @@ const relatedMembers = computed(() => {
   <main v-if="member">
     <section class="member-profile-hero">
       <div class="member-profile-photo">
-        <img :src="member.image || '/images/logo.png'" :alt="`${displayName} 头像`">
+        <img :src="member.image || site.logo" :alt="`${displayName} 头像`">
       </div>
 
       <div class="member-profile-copy">

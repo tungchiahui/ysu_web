@@ -101,7 +101,7 @@ onBeforeUnmount(stopAutoplay)
     v-if="slides.length"
     class="promo-carousel"
     aria-roledescription="carousel"
-    aria-label="Vinci 精选内容"
+    aria-label="精选内容"
     @mouseenter="stopAutoplay"
     @mouseleave="startAutoplay"
     @focusin="stopAutoplay"

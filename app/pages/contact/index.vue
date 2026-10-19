@@ -1,34 +1,15 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 useHead({
-  title: '联系 | 山东理工大学 Vinci 机器人队'
+  title: `联系 | ${site.fullName}`
 })
 
 const contactCards = [
-  {
-    title: '邮箱',
-    value: 'sdutvincirobot@foxmail.com',
-    text: '适合招新咨询、校园事务、网站信息修正等联系。',
-    href: 'mailto:sdutvincirobot@foxmail.com'
-  },
-  {
-    title: '实验室地址',
-    value: '山东理工大学智能机器人创新实践基地',
-    text: '山东省淄博市张店区山东理工大学西校区大红炉',
-    href: 'https://www.amap.com/place/B0FFHY7KRG'
-  },
-  {
-    title: '合作微信',
-    value: 'sdut_vincirobot',
-    text: '企业赞助、项目合作或赛事交流事务可通过微信沟通。',
-    href: ''
-  }
+  { title: '邮箱', value: site.contacts.email, text: '适合招新咨询、网站反馈等联系。', href: `mailto:${site.contacts.email}` },
+  { title: '实验室地址', value: site.contacts.addressName, text: site.contacts.address, href: site.contacts.map },
+  { title: '合作微信', value: site.contacts.wechat, text: '合作或赛事交流可通过微信沟通。', href: '' }
 ]
-
-const socialLinks = [
-  { label: 'GitHub', href: 'https://github.com/SDUTVINCI' },
-  { label: 'Bilibili', href: 'https://space.bilibili.com/471524675' },
-  { label: '微信公众号', href: 'https://mp.weixin.qq.com/s/AAPWX2zOhJjA-s2MA-g2Ew' }
-]
+const socialLinks = [...site.contacts.socials, { label: '战队微博', href: site.weibo }]
 </script>
 
 <template>
@@ -38,23 +19,23 @@ const socialLinks = [
         <p class="eyebrow">Contact Us</p>
         <h1>联系我们</h1>
         <p>
-          机电创新学会、Vinci 机器人队欢迎热爱机器人的同学加入，也欢迎企业、校内外团队与我们交流合作。
+          {{ site.fullName }}欢迎热爱机器人的同学加入，也欢迎企业、校内外团队与我们交流合作。
         </p>
       </div>
     </section>
 
     <section class="contact-overview">
       <div class="contact-lead">
-        <p class="eyebrow">SDUT Vinci</p>
+        <p class="eyebrow">{{ site.englishName }}</p>
         <h2>找到我们，或者先发一封邮件</h2>
         <p>
-          我们位于山东理工大学智能机器人创新实践基地。招新、合作、赛事交流和官网信息反馈，都可以通过下面的方式联系。
+          招新、合作、赛事交流和官网信息反馈入口汇总。现阶段联系方式沿用原站模板。
         </p>
         <div class="join-actions">
-          <a class="action-button primary" href="mailto:sdutvincirobot@foxmail.com">发送邮件</a>
+          <a class="action-button primary" :href="`mailto:${site.contacts.email}`">发送邮件</a>
           <a
             class="action-button"
-            href="https://www.amap.com/place/B0FFHY7KRG"
+            :href="site.contacts.map"
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -64,7 +45,7 @@ const socialLinks = [
       </div>
 
       <div class="contact-visual">
-        <img src="/images/cooporate.jpg" alt="Vinci 机器人队合作交流展示">
+        <img src="/images/cooporate.jpg" alt="原站合作交流展示模板配图">
       </div>
     </section>
 
@@ -103,7 +84,7 @@ const socialLinks = [
       </div>
     </section>
 
-    <section class="analytics-section">
+    <section v-if="site.analytics.enabled" class="analytics-section">
       <div class="section-heading">
         <p class="eyebrow">网站数据</p>
         <h2>访问统计</h2>
@@ -111,9 +92,9 @@ const socialLinks = [
 
       <iframe
         class="analytics-frame"
-        src="https://umami.tungchiahui.cn/share/JlYvq49pa9OzuAma"
+        :src="site.analytics.share"
         loading="lazy"
-        title="Vinci 官网网站统计"
+        :title="`${site.shortName}网站统计（模板）`"
       />
     </section>
   </main>

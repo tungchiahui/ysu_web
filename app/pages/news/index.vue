@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { site } from '~/data/site'
 type NewsItem = Record<string, any>
 
 useHead({
-  title: '新闻 | 山东理工大学 Vinci 机器人队'
+  title: `新闻 | ${site.fullName}`
 })
 
 const { data: rawNews } = await useAsyncData<NewsItem[]>('news:list', () =>
@@ -23,7 +24,7 @@ const formatDate = (value: unknown) => {
 const stats = computed(() => [
   { value: newsList.value.length, label: '新闻记录' },
   { value: newsList.value[0]?.date ? formatDate(newsList.value[0].date) : '持续更新', label: '最近更新' },
-  { value: 'Robocon', label: '主要动态方向' }
+  { value: site.templateMode ? '原站模板' : site.primaryCompetition, label: '内容来源' }
 ])
 </script>
 
@@ -34,7 +35,7 @@ const stats = computed(() => [
         <p class="eyebrow">Newsroom</p>
         <h1>新闻动态</h1>
         <p>
-          记录 Vinci 机器人队的赛事采访、训练进展、团队活动和阶段性成果。
+          保留原站赛事采访和活动新闻作为模板，燕鹰战队动态将逐步补充。
         </p>
       </div>
     </section>

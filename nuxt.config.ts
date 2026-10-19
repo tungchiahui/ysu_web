@@ -1,6 +1,7 @@
 import { existsSync, readdirSync } from 'node:fs'
 import { basename, join } from 'node:path'
 import { getWikiContentMeta } from './utils/wiki-content-meta'
+import site from './.content-data/site.json'
 
 const getMarkdownFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -85,11 +86,11 @@ export default defineNuxtConfig({
       htmlAttrs: {
         lang: 'zh-CN'
       },
-      title: '山东理工大学 Vinci 机器人队',
+      title: site.fullName,
       meta: [
         {
           name: 'description',
-          content: '山东理工大学 Vinci 机器人队官网，展示 Robocon 战队介绍、成果与招新信息。'
+          content: site.description
         },
         {
           name: 'viewport',
@@ -97,27 +98,18 @@ export default defineNuxtConfig({
         }
       ],
       link: [
-        {
-          rel: 'icon',
-          href: '/favicon.ico',
-          sizes: 'any'
-        },
-        {
-          rel: 'icon',
-          type: 'image/png',
-          href: '/images/logo.png'
-        }
+        { rel: 'icon', type: 'image/jpeg', href: site.logo }
       ],
       script: [
         {
           key: 'theme-init',
-          innerHTML: "(() => { try { const stored = localStorage.getItem('vinci-theme'); const theme = stored === 'light' || stored === 'dark' ? stored : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.dataset.theme = theme; } catch (_) {} })()"
+          innerHTML: "(() => { try { const stored = localStorage.getItem('ysu-theme'); const theme = stored === 'light' || stored === 'dark' ? stored : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); document.documentElement.dataset.theme = theme; } catch (_) {} })()"
         },
-        {
+        ...(site.analytics.enabled ? [{
           defer: true,
-          src: 'https://umami.tungchiahui.cn/script.js',
-          'data-website-id': 'fbf6736a-20c1-4fe9-8a24-4e0600b24903'
-        }
+          src: site.analytics.script,
+          'data-website-id': site.analytics.websiteId
+        }] : [])
       ]
     }
   },
