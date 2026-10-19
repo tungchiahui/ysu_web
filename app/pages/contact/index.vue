@@ -7,7 +7,7 @@ useHead({
 const contactCards = [
   { title: '邮箱', value: site.contacts.email, text: '适合招新咨询、网站反馈等联系。', href: `mailto:${site.contacts.email}` },
   { title: '实验室地址', value: site.contacts.addressName, text: site.contacts.address, href: site.contacts.map },
-  { title: '合作微信', value: site.contacts.wechat, text: '合作或赛事交流可通过微信沟通。', href: '' }
+  { title: '微信', value: site.contacts.wechat, text: '招新咨询、合作或赛事交流可通过微信沟通。', href: '' }
 ]
 const socialLinks = site.contacts.socials
 </script>
@@ -29,7 +29,7 @@ const socialLinks = site.contacts.socials
         <p class="eyebrow">{{ site.englishName }}</p>
         <h2>找到我们，或者先发一封邮件</h2>
         <p>
-          招新、合作、赛事交流和官网信息反馈入口汇总。现阶段联系方式沿用原站模板。
+          招新、合作、赛事交流和官网信息反馈入口汇总，欢迎通过以下方式联系我们。
         </p>
         <div class="join-actions">
           <a class="action-button primary" :href="`mailto:${site.contacts.email}`">发送邮件</a>
@@ -39,7 +39,7 @@ const socialLinks = site.contacts.socials
             target="_blank"
             rel="noopener noreferrer"
           >
-            查看位置
+            搜索东校区位置
           </a>
         </div>
       </div>

@@ -12,14 +12,8 @@ const quickLinks = [
     external: true
   },
   {
-    label: '查看团队介绍',
-    text: '通过飞书文档了解训练方向、队伍结构和赛事内容。',
-    href: site.recruitment.introduction,
-    external: true
-  },
-  {
-    label: '加入咨询群',
-    text: `QQ群 ${site.recruitment.groupNumber}，适合先咨询方向、时间投入和报名安排。`,
+    label: site.recruitment.groupName,
+    text: `点击链接加入群聊，QQ群号：${site.recruitment.groupNumber}。`,
     href: site.recruitment.group,
     external: true
   }
@@ -108,7 +102,7 @@ const process = [
             target="_blank"
             rel="noopener noreferrer"
           >
-            加入咨询群
+            加入算法招新群
           </a>
         </div>
       </div>
@@ -164,20 +158,6 @@ const process = [
           </div>
         </article>
       </div>
-    </section>
-
-    <section class="embedded-doc-section">
-      <div class="section-heading">
-        <p class="eyebrow">团队介绍</p>
-        <h2>飞书文档</h2>
-      </div>
-
-      <iframe
-        class="embedded-doc"
-        :src="site.recruitment.introduction"
-        loading="lazy"
-        :title="`${site.shortName}团队介绍（模板）`"
-      />
     </section>
   </main>
 </template>

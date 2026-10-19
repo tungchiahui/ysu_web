@@ -83,6 +83,10 @@
   gap: 16px;
 }
 
+.quick-link-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .quick-link-card,
 .contact-card {
   display: grid;
@@ -174,7 +178,7 @@
 .recruitment-split {
   display: grid;
   width: min(var(--content), calc(100% - 48px));
-  margin: 86px auto 0;
+  margin: 86px auto 96px;
   grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: 48px;
   align-items: start;
