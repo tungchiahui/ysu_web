@@ -82,7 +82,7 @@ const process = [
 
     <section class="recruitment-intro">
       <div class="join-copy">
-        <p class="eyebrow">Robocon Team</p>
+        <p class="eyebrow">RoboMaster Team</p>
         <h2>把课堂知识推进到真实机器人上</h2>
         <p>
           你可以从零开始学习机械设计、电控调试、嵌入式开发、视觉算法或团队运营，也可以带着已有经验加入项目。我们更看重持续投入、协作意识和解决问题的韧性。

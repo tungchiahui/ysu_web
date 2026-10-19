@@ -9,6 +9,45 @@
   gap: 16px;
 }
 
+.achievement-index-link,
+.achievement-source,
+.achievement-footnote a {
+  color: var(--cyan);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.achievement-index-link {
+  display: inline-block;
+  margin-top: 16px;
+}
+
+.achievement-coverage,
+.achievement-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.achievement-coverage {
+  margin: 0 0 24px;
+}
+
+.achievement-note {
+  margin: 0 0 16px;
+}
+
+.achievement-source {
+  display: block;
+  width: fit-content;
+  margin-top: 4px;
+  font-size: 0.82rem;
+}
+
+.achievement-footnote {
+  margin: 28px 0 0;
+}
+
 .achievement-card {
   position: relative;
   min-height: 190px;
