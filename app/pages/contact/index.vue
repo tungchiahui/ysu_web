@@ -9,7 +9,7 @@ const contactCards = [
   { title: '实验室地址', value: site.contacts.addressName, text: site.contacts.address, href: site.contacts.map },
   { title: '合作微信', value: site.contacts.wechat, text: '合作或赛事交流可通过微信沟通。', href: '' }
 ]
-const socialLinks = [...site.contacts.socials, { label: '战队微博', href: site.weibo }]
+const socialLinks = site.contacts.socials
 </script>
 
 <template>

@@ -5,7 +5,6 @@ import { homePromoAutoplayMs, homePromoSlides } from '~/data/home-promos'
 useHead({ title: site.fullName })
 
 const heroLinks = [
-  { label: '战队微博', href: site.weibo, external: true },
   ...site.contacts.socials.map(link => ({ ...link, external: true })),
   { label: '加入我们', href: '/recruitment', external: false }
 ]

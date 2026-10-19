@@ -17,7 +17,6 @@ import { site } from '~/data/site'
         <div class="footer-links">
           <a :href="`mailto:${site.contacts.email}`">邮箱</a>
           <a v-for="link in site.contacts.socials" :key="link.label" :href="link.href" target="_blank" rel="noopener noreferrer">{{ link.label }}</a>
-          <a :href="site.weibo" target="_blank" rel="noopener noreferrer">战队微博</a>
         </div>
       </div>
 
