@@ -6,7 +6,6 @@ export type MemberSeason = { year: number; group?: string; roles?: string[] }
 export type Member = {
   kind: 'student' | 'teacher'
   name: string
-  university: string
   affiliation: string
   image?: string
   grade?: number
@@ -34,15 +33,19 @@ export function seasonRoleText(season: MemberSeason) {
   return (season.roles || []).map(role => role === '组长' || role === '成员' ? `${season.group}${role}` : role).join('、')
 }
 
+export function seasonFilterLabel(year: number) {
+  return `${String(year).slice(-2)}赛季`
+}
+
 export function memberRoleText(member: Member, season = 'all') {
   if (member.kind === 'teacher') return '指导老师'
   const records = memberSeasons(member, season)
-  return records.map(item => `${records.length > 1 ? `${item.year} 赛季：` : ''}${seasonRoleText(item)}`).join('；')
+  return records.map(item => `${records.length > 1 ? `${item.year}：` : ''}${seasonRoleText(item)}`).join('；')
 }
 
 export function memberSeasonText(member: Member, season = 'all') {
   const years = memberSeasons(member, season).map(item => item.year).sort((a, b) => a - b)
-  if (!years.length) return member.kind === 'teacher' ? '不限赛季' : ''
+  if (!years.length) return member.kind === 'teacher' ? '不限' : ''
   const ranges: string[] = []
   let start = years[0]!, end = start
   for (const year of years.slice(1)) {
@@ -50,7 +53,7 @@ export function memberSeasonText(member: Member, season = 'all') {
     else { ranges.push(start === end ? `${start}` : `${start}–${end}`); start = end = year }
   }
   ranges.push(start === end ? `${start}` : `${start}–${end}`)
-  return `${ranges.join('、')} 赛季`
+  return ranges.join('、')
 }
 
 export function matchesMember(member: Member, filters: { season: string; kind: string; group: string; role: string; search: string }) {
@@ -63,7 +66,7 @@ export function matchesMember(member: Member, filters: { season: string; kind: s
       (filters.role === 'all' || item.roles?.includes(filters.role)))) return false
   }
   const keyword = filters.search.trim().toLowerCase()
-  const text = [member.name, member.university, member.affiliation, member.grade,
+  const text = [member.name, member.affiliation, member.grade,
     member.department, ...(member.titles || []), memberRoleText(member, filters.season),
     ...memberGroups(member, filters.season), ...memberSeasons(member, filters.season).map(item => item.year)].join(' ').toLowerCase()
   return !keyword || text.includes(keyword)

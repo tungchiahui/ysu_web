@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { site } from '~/data/site'
-import { MEMBER_GROUPS, MEMBER_ROLES, hasMemberSeason, matchesMember, memberGroups, memberSeasons, type Member } from '~/utils/members'
+import { MEMBER_GROUPS, MEMBER_ROLES, hasMemberSeason, matchesMember, memberGroups, memberSeasons, seasonFilterLabel, type Member } from '~/utils/members'
 
 useHead({ title: `成员 | ${site.fullName}` })
 const { data: rawMembers } = await useAsyncData('members:list', () => queryCollection('members').all() as Promise<Member[]>)
@@ -17,7 +17,7 @@ const allMembers = computed(() => [...(rawMembers.value || [])].sort((a, b) => {
 const seasonTabs = computed(() => [
   { label: '全部赛季', value: 'all' },
   ...[...new Set(allMembers.value.flatMap(member => member.seasons.map(item => item.year)))]
-    .sort((a, b) => b - a).map(year => ({ label: `${year} 赛季`, value: String(year) }))
+    .sort((a, b) => b - a).map(year => ({ label: seasonFilterLabel(year), value: String(year) }))
 ])
 const kindDefs = [{ value: 'all', label: '全部人员' }, { value: 'teacher', label: '指导老师' }, { value: 'student', label: '学生成员' }]
 const groupDefs = [{ value: 'all', label: '全部组别' }, ...MEMBER_GROUPS.map(value => ({ value, label: value }))]
@@ -50,7 +50,7 @@ const stats = computed(() => [
       <div>
         <p class="eyebrow">Team Roster</p>
         <h1>成员</h1>
-        <p>按赛季、技术组和职务浏览成员档案。指导老师资料暂保留原站档案，所属学校与学院见个人介绍。</p>
+        <p>按赛季、技术组和职务浏览成员档案。指导老师资料暂保留原站档案。</p>
       </div>
     </section>
     <section class="stats-band members-stats" aria-label="成员概览">
@@ -59,7 +59,7 @@ const stats = computed(() => [
     <section class="member-controls" aria-label="成员筛选">
       <div class="member-search">
         <label for="member-search">搜索成员</label>
-        <input id="member-search" v-model="search" type="search" placeholder="姓名、学校、学院、组别、职务或赛季">
+        <input id="member-search" v-model="search" type="search" placeholder="姓名、学院、组别、职务或赛季">
       </div>
       <div class="member-filter">
         <span class="member-filter-label">赛季</span>

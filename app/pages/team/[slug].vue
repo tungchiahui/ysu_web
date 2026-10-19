@@ -32,14 +32,14 @@ const relatedMembers = computed(() => {
         <h1>{{ member.name }}</h1>
         <p class="profile-role">{{ memberRoleText(member) }}</p>
         <div class="profile-tags">
-          <span>{{ member.university }}</span><span>{{ member.affiliation }}</span>
+          <span>{{ member.affiliation }}</span>
           <span v-if="member.kind === 'student' && member.grade">{{ member.grade }} 级</span>
           <span v-if="member.kind === 'teacher'">{{ memberSeasonText(member) }}</span>
           <span v-if="member.department">{{ member.department }}</span>
           <span v-for="title in member.titles || []" :key="title">{{ title }}</span>
         </div>
         <ul v-if="member.kind === 'student'" class="profile-lines" aria-label="赛季任职">
-          <li v-for="record in currentSeasons" :key="record.year">{{ record.year }} 赛季 · {{ seasonRoleText(record) }}</li>
+          <li v-for="record in currentSeasons" :key="record.year">{{ record.year }} · {{ seasonRoleText(record) }}</li>
         </ul>
         <div v-if="externalLinks.length" class="profile-links">
           <a v-for="link in externalLinks" :key="link.href" :href="link.href" target="_blank" rel="noopener noreferrer">{{ link.label }}</a>

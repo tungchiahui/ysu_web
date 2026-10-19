@@ -7,7 +7,6 @@ const externalLinks = computed(() => memberLinks(props.member))
 const memberPath = computed(() => `/team/${encodeURIComponent(props.member.name)}`)
 const infoRows = computed(() => [
   { label: '职务', value: memberRoleText(props.member, props.season) },
-  { label: '学校', value: props.member.university },
   { label: '学院', value: props.member.affiliation },
   { label: '部门', value: props.member.department },
   { label: '头衔', value: props.member.titles?.join('、') },

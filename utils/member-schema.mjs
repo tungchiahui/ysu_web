@@ -9,7 +9,6 @@ export function memberFields(z) {
     kind: z.enum(['student', 'teacher']),
     name: z.string().trim().min(1),
     image: z.string().regex(/^\/images\/.+\.(?:jpe?g|png|webp|gif|avif|svg)$/i).optional(),
-    university: z.string().trim().min(1),
     affiliation: z.string().trim().min(1),
     grade: year.optional(),
     department: z.string().trim().min(1).optional(),

@@ -5,18 +5,20 @@ import os from 'node:os'
 import path from 'node:path'
 import { z } from '@nuxt/content'
 import { createMemberSchema } from '../utils/member-schema.mjs'
-import { matchesMember, memberRoleText, memberSeasonText, hasMemberSeason } from '../app/utils/members.ts'
+import { matchesMember, memberRoleText, memberSeasonText, hasMemberSeason, seasonFilterLabel } from '../app/utils/members.ts'
 import { checkMembers } from '../scripts/member-check.mjs'
 
 const schema = createMemberSchema(z)
-const student = { kind: 'student', name: '测试学生', university: '燕山大学', affiliation: '电气工程学院', grade: 2026, seasons: [{ year: 2027, group: '算法组', roles: ['成员'] }] }
-const teacher = { kind: 'teacher', name: '测试老师', university: '燕山大学', affiliation: '机械工程学院', seasons: [] }
+const student = { kind: 'student', name: '测试学生', affiliation: '电气工程学院', grade: 2026, seasons: [{ year: 2027, group: '算法组', roles: ['成员'] }] }
+const teacher = { kind: 'teacher', name: '测试老师', affiliation: '机械工程学院', seasons: [] }
 const valid = value => assert.equal(schema.safeParse(value).success, true)
 const invalid = value => assert.equal(schema.safeParse(value).success, false)
 
 test('人员字段拒绝旧分类、梯队、缺失学生任职及错误年份', () => {
   valid(student)
   valid(teacher)
+  invalid({ ...student, university: '燕山大学' })
+  invalid({ ...teacher, university: '山东理工大学' })
   for (const group of ['控制组', '电路组', '运营组', '梯队']) invalid({ ...student, seasons: [{ year: 2027, group, roles: ['成员'] }] })
   invalid({ ...student, grade: '2026' })
   invalid({ ...student, seasons: [] })
@@ -49,7 +51,16 @@ test('老师按实际指导赛季显示，不参与学生职务筛选', () => {
   assert.equal(hasMemberSeason({ ...teacher, seasons: [{ year: 2026 }] }, '2027'), false)
   assert.equal(matchesMember(teacher, { season: 'all', kind: 'teacher', group: 'all', role: 'all', search: '' }), true)
   assert.equal(matchesMember(teacher, { season: 'all', kind: 'teacher', group: 'all', role: '成员', search: '' }), false)
-  assert.equal(memberSeasonText({ ...teacher, seasons: [{ year: 2024 }, { year: 2025 }, { year: 2026 }] }), '2024–2026 赛季')
+  assert.equal(memberSeasonText({ ...teacher, seasons: [{ year: 2024 }, { year: 2025 }, { year: 2026 }] }), '2024–2026')
+})
+
+test('赛季值仅显示四位年份，顶部筛选显示两位年份加赛季', () => {
+  assert.equal(memberSeasonText(student), '2027')
+  assert.equal(memberSeasonText(teacher), '不限')
+  assert.equal(memberSeasonText({ ...teacher, seasons: [{ year: 2027 }, { year: 2029 }] }), '2027、2029')
+  assert.equal(seasonFilterLabel(2027), '27赛季')
+  assert.equal(seasonFilterLabel(2007), '07赛季')
+  assert.equal(memberRoleText({ ...student, seasons: [...student.seasons, { year: 2028, group: '算法组', roles: ['组长'] }] }), '2028：算法组组长；2027：算法组成员')
 })
 
 test('原始 YAML 校验报告错误字段及不存在的头像', async () => {
@@ -57,7 +68,7 @@ test('原始 YAML 校验报告错误字段及不存在的头像', async () => {
   try {
     const dir = path.join(root, 'content/members')
     await fs.mkdir(dir, { recursive: true })
-    await fs.writeFile(path.join(dir, '测试老师.md'), '---\nkind: teacher\nname: 测试老师\nuniversity: 燕山大学\naffiliation: 机械工程学院\nimage: /images/missing.jpg\n---\n')
+    await fs.writeFile(path.join(dir, '测试老师.md'), '---\nkind: teacher\nname: 测试老师\naffiliation: 机械工程学院\nimage: /images/missing.jpg\n---\n')
     let result = await checkMembers(root)
     assert(result.errors.some(error => error.includes('头像文件不存在')))
     await fs.writeFile(path.join(dir, '测试老师.md'), '---\nkind: teacher\nkind: student\n---\n')
