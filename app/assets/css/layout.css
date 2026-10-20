@@ -21,7 +21,7 @@
 }
 
 .brand-logo {
-  width: 76px;
+  width: 44px;
   height: 44px;
   flex: 0 0 auto;
   object-fit: contain;
@@ -191,8 +191,8 @@
   border-radius: 8px;
 }
 
-/* 横版队标在圆形默认头像等容器中也保持完整。 */
-.site-shell img[src="/images/ysu-logo-hd.jpg"] {
+/* 默认头像完整显示队标。 */
+.site-shell img[src="/images/ysu-logo-800.jpg"] {
   object-fit: contain;
   background: #fff;
 }
