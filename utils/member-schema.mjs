@@ -44,8 +44,9 @@ export function createMemberSchema(z) {
       if (person.grade === undefined) issue(['grade'], '学生必须填写四位入学年份')
       if (!person.seasons.length) issue(['seasons'], '学生至少填写一个赛季')
       if (person.department !== undefined || person.titles !== undefined) issue(['kind'], '学生不填写教师专用的 department 或 titles')
-    } else if (person.grade !== undefined) {
-      issue(['grade'], '指导老师不填写入学年级')
+    } else {
+      if (person.grade !== undefined) issue(['grade'], '指导老师不填写入学年级')
+      if (!person.seasons.length) issue(['seasons'], '指导老师至少填写一个赛季')
     }
   })
 }

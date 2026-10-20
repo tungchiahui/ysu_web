@@ -10,7 +10,7 @@ import { checkMembers } from '../scripts/member-check.mjs'
 
 const schema = createMemberSchema(z)
 const student = { kind: 'student', name: '测试学生', affiliation: '电气工程学院', grade: 2026, seasons: [{ year: 2027, group: '算法组', roles: ['成员'] }] }
-const teacher = { kind: 'teacher', name: '测试老师', affiliation: '机械工程学院', seasons: [] }
+const teacher = { kind: 'teacher', name: '测试老师', affiliation: '机械工程学院', seasons: [{ year: 2027 }] }
 const valid = value => assert.equal(schema.safeParse(value).success, true)
 const invalid = value => assert.equal(schema.safeParse(value).success, false)
 
@@ -26,6 +26,8 @@ test('人员字段拒绝旧分类、梯队、缺失学生任职及错误年份',
   invalid({ ...student, tier: '梯队' })
   invalid({ ...student, advisor: 2028 })
   invalid({ ...teacher, grade: 2026 })
+  invalid({ ...teacher, seasons: [] })
+  invalid({ ...teacher, seasons: undefined })
   invalid({ ...teacher, seasons: student.seasons })
 })
 
@@ -64,6 +66,7 @@ test('运营组资料可校验，筛选和职务展示使用对应赛季', () =>
 
 test('老师按实际指导赛季显示，不参与学生职务筛选', () => {
   assert.equal(hasMemberSeason(teacher, '2027'), true)
+  assert.equal(hasMemberSeason(teacher, '2026'), false)
   assert.equal(hasMemberSeason({ ...teacher, seasons: [{ year: 2026 }] }, '2027'), false)
   assert.equal(matchesMember(teacher, { season: 'all', kind: 'teacher', group: 'all', role: 'all', search: '' }), true)
   assert.equal(matchesMember(teacher, { season: 'all', kind: 'teacher', group: 'all', role: '成员', search: '' }), false)
@@ -72,7 +75,7 @@ test('老师按实际指导赛季显示，不参与学生职务筛选', () => {
 
 test('赛季值仅显示四位年份，顶部筛选显示两位年份加赛季', () => {
   assert.equal(memberSeasonText(student), '2027')
-  assert.equal(memberSeasonText(teacher), '不限')
+  assert.equal(memberSeasonText(teacher), '2027')
   assert.equal(memberSeasonText({ ...teacher, seasons: [{ year: 2027 }, { year: 2029 }] }), '2027、2029')
   assert.equal(seasonFilterLabel(2027), '27赛季')
   assert.equal(seasonFilterLabel(2007), '07赛季')
@@ -84,7 +87,7 @@ test('原始 YAML 校验报告错误字段及不存在的头像', async () => {
   try {
     const dir = path.join(root, 'content/members')
     await fs.mkdir(dir, { recursive: true })
-    await fs.writeFile(path.join(dir, '测试老师.md'), '---\nkind: teacher\nname: 测试老师\naffiliation: 机械工程学院\nimage: /images/missing.jpg\n---\n')
+    await fs.writeFile(path.join(dir, '测试老师.md'), '---\nkind: teacher\nname: 测试老师\naffiliation: 机械工程学院\nseasons:\n  - year: 2027\nimage: /images/missing.jpg\n---\n')
     let result = await checkMembers(root)
     assert(result.errors.some(error => error.includes('头像文件不存在')))
     await fs.writeFile(path.join(dir, '测试老师.md'), '---\nkind: teacher\nkind: student\n---\n')
