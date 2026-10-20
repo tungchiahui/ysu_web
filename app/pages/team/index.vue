@@ -50,7 +50,7 @@ const stats = computed(() => [
       <div>
         <p class="eyebrow">Team Roster</p>
         <h1>成员</h1>
-        <p>按赛季、技术组和职务浏览成员档案。指导老师资料暂保留原站档案。</p>
+        <p>按赛季、技术组和职务浏览战队成员与指导老师档案。</p>
       </div>
     </section>
     <section class="stats-band members-stats" aria-label="成员概览">
