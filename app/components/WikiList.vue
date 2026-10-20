@@ -194,7 +194,7 @@ function matchesQuery(wiki: WikiListItem, query: string) {
           </div>
 
           <button
-            v-if="doc.chapters.length"
+            v-if="doc.index || doc.chapters.length"
             class="wiki-doc-toggle"
             type="button"
             :aria-expanded="isDocExpanded(doc)"
@@ -204,7 +204,13 @@ function matchesQuery(wiki: WikiListItem, query: string) {
           </button>
         </header>
 
-        <ol v-if="doc.chapters.length && isDocExpanded(doc)" class="wiki-chapter-list">
+        <ol v-if="(doc.index || doc.chapters.length) && isDocExpanded(doc)" class="wiki-chapter-list">
+          <li v-if="doc.index" class="wiki-chapter-item wiki-index-item">
+            <NuxtLink :to="doc.index.path" class="wiki-chapter-link">
+              <span class="wiki-chapter-number">首页</span>
+              <span>{{ doc.title }}</span>
+            </NuxtLink>
+          </li>
           <li
             v-for="chapter in doc.chapters"
             :key="chapter.path"

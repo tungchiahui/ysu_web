@@ -23,7 +23,7 @@
 .join-photo,
 .contact-visual {
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 8px;
   background: var(--media-bg);
   box-shadow: var(--shadow);
 }
@@ -47,18 +47,18 @@
   min-height: 44px;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--link) 26%, transparent);
-  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 26%, transparent);
+  border-radius: 8px;
   padding: 10px 16px;
-  background: color-mix(in srgb, var(--link) 8%, transparent);
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
   color: var(--cyan);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.15;
 }
 
 .action-button:hover {
-  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--red) 30%, transparent);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
   color: var(--red-dark);
 }
 
@@ -94,14 +94,14 @@
   gap: 12px;
   min-height: 178px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 24px;
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
 .quick-link-card:hover {
-  border-color: color-mix(in srgb, var(--link) 34%, transparent);
+  border-color: color-mix(in srgb, var(--cyan) 34%, transparent);
   box-shadow: var(--shadow-hover);
   transform: translateY(-2px);
 }
@@ -111,7 +111,7 @@
 .contact-card strong {
   color: var(--red-dark);
   font-size: 1.08rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1.25;
 }
 
@@ -125,10 +125,10 @@
   width: fit-content;
   border-radius: 999px;
   padding: 3px 9px;
-  background: color-mix(in srgb, var(--link) 9%, transparent);
+  background: color-mix(in srgb, var(--cyan) 9%, transparent);
   color: var(--cyan);
   font-size: 0.8rem;
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .contact-card a:hover {
@@ -152,7 +152,7 @@
 .track-card {
   min-height: 190px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 24px;
   background: var(--surface);
   box-shadow: var(--shadow-card);
@@ -227,7 +227,7 @@
   gap: 18px;
   align-items: start;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 8px;
   padding: 20px;
   background: var(--surface);
 }
@@ -239,9 +239,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: color-mix(in srgb, var(--red) 10%, transparent);
   color: var(--red);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .embedded-doc,
@@ -250,7 +250,7 @@
   width: 100%;
   min-height: 760px;
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 8px;
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
@@ -271,16 +271,16 @@
   min-height: 44px;
   align-items: center;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--red) 24%, transparent);
+  border-radius: 8px;
   padding: 10px 16px;
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: color-mix(in srgb, var(--red) 8%, transparent);
   color: var(--red-dark);
-  font-weight: 900;
+  font-weight: 700;
 }
 
 .social-strip a:hover {
-  border-color: color-mix(in srgb, var(--link) 36%, transparent);
-  background: color-mix(in srgb, var(--link) 8%, transparent);
+  border-color: color-mix(in srgb, var(--cyan) 36%, transparent);
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
   color: var(--cyan);
 }

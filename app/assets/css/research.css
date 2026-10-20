@@ -5,77 +5,50 @@
 
 .achievement-timeline {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
-}
-
-.achievement-index-link,
-.achievement-source,
-.achievement-footnote a {
-  color: var(--cyan);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.achievement-index-link {
-  display: inline-block;
-  margin-top: 16px;
-}
-
-.achievement-coverage,
-.achievement-note {
-  color: var(--muted);
-  font-size: 0.9rem;
-  line-height: 1.7;
-}
-
-.achievement-coverage {
-  margin: 0 0 24px;
-}
-
-.achievement-note {
-  margin: 0 0 16px;
-}
-
-.achievement-source {
-  display: block;
-  width: fit-content;
-  margin-top: 4px;
-  font-size: 0.82rem;
-}
-
-.achievement-footnote {
-  margin: 28px 0 0;
 }
 
 .achievement-card {
   position: relative;
   min-height: 190px;
-  border-top: 1px solid var(--line);
-  padding: 26px 0 26px 148px;
-  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 26px 28px 26px 158px;
+  background: var(--surface);
+}
+
+.achievement-card::before {
+  position: absolute;
+  top: 30px;
+  bottom: 30px;
+  left: 122px;
+  width: 2px;
+  background: linear-gradient(var(--red), var(--cyan));
+  content: "";
 }
 
 .achievement-year {
   position: absolute;
   top: 26px;
-  left: 0;
+  left: 24px;
   display: inline-flex;
   min-width: 74px;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  color: var(--accent);
-  font-family: var(--font-display);
+  border: 1px solid color-mix(in srgb, var(--red) 16%, transparent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+  color: var(--red);
   font-size: 1.55rem;
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
 .achievement-card ul {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 36px;
+  gap: 9px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -90,9 +63,9 @@
 .achievement-card li::before {
   position: absolute;
   top: 0.7em;
-  left: -14px;
-  width: 4px;
-  height: 4px;
+  left: -22px;
+  width: 7px;
+  height: 7px;
   border-radius: 999px;
   background: var(--gold);
   content: "";

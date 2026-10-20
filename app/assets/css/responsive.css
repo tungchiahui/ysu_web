@@ -1,29 +1,222 @@
-@media (max-width: 960px) {
+@media (max-width: 920px) {
+  :root {
+    --site-header-height: 66px;
+  }
+
+  .site-header {
+    min-height: var(--site-header-height);
+  }
+
+  .home-hero {
+    min-height: 640px;
+  }
+
+  .brand-subtitle {
+    display: none;
+  }
+
+  h1 {
+    font-size: 3.2rem;
+  }
+
+  h2 {
+    font-size: 1.9rem;
+  }
+
+  .stats-band,
+  .research-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .stat-item:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .feature-row,
+  .feature-row.reversed {
+    grid-template-columns: 1fr;
+  }
+
+  .feature-row.reversed .feature-media {
+    order: 0;
+  }
+
+  .achievement-timeline {
+    grid-template-columns: 1fr;
+  }
+
   .member-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
   .member-profile-hero,
   .member-profile-content {
     grid-template-columns: 1fr;
   }
+
   .recruitment-intro,
   .contact-overview,
   .recruitment-split {
     grid-template-columns: 1fr;
   }
+
   .quick-link-grid,
   .contact-card-grid {
     grid-template-columns: 1fr;
   }
+
   .track-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .wiki-doc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .wiki-reader {
+    grid-template-columns: 1fr;
+  }
+
+  .wiki-sidebar {
+    position: static;
+    max-height: none;
+  }
+
   .member-profile-photo {
-    max-width: 360px;
+    max-width: 420px;
+  }
+
+  .footer-main {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .footer-links {
+    justify-content: flex-start;
   }
 }
-@media (max-width: 640px) {
+
+@media (max-width: 920px) {
+  :root {
+    --site-header-height: 62px;
+  }
+
+  .site-header {
+    align-items: center;
+    flex-direction: row;
+    gap: 12px;
+    min-height: var(--site-header-height);
+    padding: 8px 14px;
+  }
+
+  .brand {
+    flex: 1 1 auto;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .brand-logo {
+    width: 38px;
+    height: 38px;
+  }
+
+  .brand-title {
+    max-width: 46vw;
+    font-size: 0.92rem;
+  }
+
+  .header-actions {
+    width: auto;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .site-nav {
+    position: fixed;
+    top: calc(var(--site-header-height) + 8px);
+    right: 14px;
+    left: 14px;
+    z-index: 90;
+    display: grid;
+    max-height: calc(100dvh - var(--site-header-height) - 24px);
+    overflow-y: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px) scale(0.98);
+    transform-origin: top right;
+    visibility: hidden;
+    transition:
+      opacity 0.16s ease,
+      transform 0.16s ease,
+      visibility 0s linear 0.16s;
+  }
+
+  .site-nav.is-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+    visibility: visible;
+    transition-delay: 0s;
+  }
+
+  .nav-link {
+    display: inline-flex;
+    min-width: 0;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    border-color: var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--surface-soft);
+    overflow-wrap: anywhere;
+    touch-action: manipulation;
+  }
+
+  .theme-toggle,
+  .nav-toggle {
+    position: relative;
+    z-index: 95;
+    width: 38px;
+    height: 38px;
+  }
+
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  .mobile-nav-backdrop {
+    position: fixed;
+    top: var(--site-header-height);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 70;
+    display: block;
+    border: 0;
+    padding: 0;
+    background: rgba(15, 23, 42, 0.3);
+  }
+}
+
+@media (max-width: 620px) {
+  :root {
+    --site-header-height: 62px;
+  }
+
+  .hero-content,
+  .feature-stack,
   .achievement-section,
+  .stats-band,
+  .footer-inner,
   .recruitment-intro,
   .contact-overview,
   .quick-link-grid,
@@ -33,86 +226,185 @@
   .news-section,
   .news-detail,
   .wiki-section,
+  .wiki-reader,
   .analytics-section,
   .embedded-doc-section,
-  .recruitment-split,
-  .member-controls,
-  .member-directory,
-  .member-profile-hero,
-  .member-profile-content {
-    width: calc(100% - 40px);
-  }
-  .achievement-section,
-  .news-section,
-  .news-detail,
-  .member-directory {
-    margin-block: 44px 64px;
-  }
-  .recruitment-intro,
-  .contact-overview,
-  .recruitment-section,
-  .contact-section {
-    margin-top: 44px;
-    gap: 26px;
-  }
   .recruitment-split {
-    margin-block: 44px 64px;
-    gap: 32px;
+    width: calc(100% - 32px);
   }
-  .quick-link-grid,
-  .contact-card-grid {
-    margin-top: 30px;
+
+  .hero-content {
+    display: grid;
+    min-height: 0;
+    align-content: center;
+    padding: 90px 0 104px;
   }
+
+  .home-hero {
+    min-height: max(700px, calc(100svh - 72px));
+  }
+
+  h1 {
+    font-size: 2.55rem;
+  }
+
+  .hero-summary,
+  .page-hero p:not(.eyebrow) {
+    font-size: 1rem;
+  }
+
+  .hero-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .button {
+    width: 100%;
+  }
+
+  .stats-band,
+  .research-stats {
+    margin-top: 24px;
+    grid-template-columns: 1fr;
+  }
+
+  .stat-item {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stat-item:last-child {
+    border-bottom: 0;
+  }
+
+  .feature-stack {
+    gap: 52px;
+    margin: 64px auto;
+  }
+
+  .page-hero {
+    min-height: 320px;
+    padding: 70px 18px 56px;
+  }
+
+  .achievement-card {
+    padding: 86px 22px 24px;
+  }
+
+  .achievement-card::before {
+    top: 82px;
+    bottom: 26px;
+    left: 34px;
+  }
+
+  .achievement-year {
+    top: 22px;
+    left: 20px;
+  }
+
+  .achievement-card ul {
+    padding-left: 56px;
+  }
+
   .join-actions {
     flex-direction: column;
   }
+
   .action-button {
     width: 100%;
-    overflow-wrap: anywhere;
   }
-  .track-grid,
-  .member-grid {
+
+  .track-grid {
     grid-template-columns: 1fr;
   }
-  .member-controls {
-    margin-top: 30px;
-    padding: 18px;
-  }
-  .member-groups {
-    gap: 40px;
-  }
-  .member-profile-hero {
-    margin-top: 32px;
-    gap: 28px;
-  }
-  .member-profile-copy h1 {
-    font-size: 2.4rem;
-  }
-  .member-profile-content {
-    margin-top: 44px;
-  }
-  .achievement-card {
-    padding: 78px 0 26px;
-  }
-  .achievement-card ul {
+
+  .wiki-toolbar,
+  .wiki-doc-grid,
+  .wiki-page-nav {
     grid-template-columns: 1fr;
-    padding-left: 16px;
   }
-  .achievement-year {
-    top: 22px;
-    left: 0;
+
+  .wiki-article {
+    padding: 24px 18px;
   }
+
+  .wiki-article-header h1 {
+    font-size: 2.25rem;
+  }
+
   .process-item {
     grid-template-columns: 1fr;
   }
-  .contact-card {
-    overflow-wrap: anywhere;
-  }
+
   .embedded-doc,
   .analytics-frame {
     min-height: 620px;
   }
-  .wiki-article {
-    padding: 26px 20px;
+
+  .member-controls,
+  .member-directory,
+  .member-profile-hero,
+  .member-profile-content {
+    width: calc(100% - 32px);
+  }
+
+  .member-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .member-profile-hero {
+    margin-top: 34px;
+    gap: 28px;
+  }
+
+  .member-profile-copy h1 {
+    font-size: 2.4rem;
+  }
+
+  .member-profile-content {
+    margin-top: 52px;
+  }
+
+  .achievement-card::before {
+    top: 82px;
+    bottom: 26px;
+    left: 34px;
+  }
+
+  .achievement-year {
+    top: 22px;
+    left: 20px;
+  }
+}
+
+@media (max-width: 380px) {
+  .site-header {
+    gap: 8px;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
+
+  .brand {
+    gap: 8px;
+  }
+
+  .brand-logo {
+    width: 34px;
+    height: 34px;
+  }
+
+  .brand-title {
+    max-width: 42vw;
+    font-size: 0.86rem;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .theme-toggle,
+  .nav-toggle {
+    width: 36px;
+    height: 36px;
   }
 }
