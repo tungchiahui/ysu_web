@@ -1,6 +1,7 @@
 import { defineCollection, defineContentConfig, z } from '@nuxt/content'
 import { memberFields } from './utils/member-schema.mjs'
 import { wikiFrontmatterFields } from './utils/wiki-authors.mjs'
+import { newsFrontmatterFields } from './utils/news-content-meta.mjs'
 
 export default defineContentConfig({
   collections: {
@@ -13,12 +14,9 @@ export default defineContentConfig({
       type: 'page',
       source: 'news/**/*.md',
       schema: z.object({
-        title: z.string(),
+        ...newsFrontmatterFields(z),
         date: z.string().optional(),
-        author: z.string().nullable().optional(),
-        tags: z.array(z.string()).nullable().optional(),
         image: z.string().nullable().optional(),
-        bvid: z.string().nullable().optional(),
         summary: z.string().nullable().optional()
       }).passthrough()
     }),

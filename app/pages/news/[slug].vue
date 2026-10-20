@@ -28,12 +28,6 @@ const formatDate = (value: unknown) => {
   return text.replace(/-/g, '.')
 }
 
-const bilibiliSrc = computed(() => {
-  const bvid = page.value?.bvid
-  if (!bvid) return ''
-
-  return `https://player.bilibili.com/player.html?isOutside=true&bvid=${encodeURIComponent(String(bvid))}&p=1`
-})
 </script>
 
 <template>
@@ -48,19 +42,8 @@ const bilibiliSrc = computed(() => {
 
     <article class="news-detail">
       <div class="news-detail-meta">
-        <span v-if="page.author">{{ page.author }}</span>
+        <span v-if="page.authors?.length">{{ page.authors.join('、') }}</span>
         <span>{{ formatDate(page.date) }}</span>
-        <span v-for="tag in page.tags || []" :key="tag">{{ tag }}</span>
-      </div>
-
-      <div v-if="bilibiliSrc" class="news-video">
-        <iframe
-          :src="bilibiliSrc"
-          title="Bilibili 视频"
-          scrolling="no"
-          frameborder="0"
-          allowfullscreen
-        />
       </div>
 
       <div class="content-prose">

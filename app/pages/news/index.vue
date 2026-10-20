@@ -24,7 +24,7 @@ const formatDate = (value: unknown) => {
 const stats = computed(() => [
   { value: newsList.value.length, label: '新闻记录' },
   { value: newsList.value[0]?.date ? formatDate(newsList.value[0].date) : '持续更新', label: '最近更新' },
-  { value: site.templateMode ? '原站模板' : site.primaryCompetition, label: '内容来源' }
+  { value: site.primaryCompetition, label: '赛事方向' }
 ])
 </script>
 
@@ -35,7 +35,7 @@ const stats = computed(() => [
         <p class="eyebrow">Newsroom</p>
         <h1>新闻动态</h1>
         <p>
-          保留原站赛事采访和活动新闻作为模板，燕鹰战队动态将逐步补充。
+          记录燕鹰战队的赛事进展、校内活动与新闻公告。
         </p>
       </div>
     </section>
@@ -61,14 +61,12 @@ const stats = computed(() => [
             </span>
             <span class="news-card-copy">
               <span class="news-date">{{ formatDate(item.date) }}</span>
+              <span v-if="item.authors?.length" class="news-date">{{ item.authors.join('、') }}</span>
               <h3>{{ item.title }}</h3>
               <span class="news-card-summary">{{ item.summary || item.description || '查看完整新闻内容。' }}</span>
             </span>
           </NuxtLink>
 
-          <div v-if="item.tags?.length" class="news-tags">
-            <span v-for="tag in item.tags" :key="tag">{{ tag }}</span>
-          </div>
         </article>
       </div>
 

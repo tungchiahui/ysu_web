@@ -5,6 +5,7 @@ import site from './.content-data/site.json'
 import remarkWikiLinks from './utils/remark-wiki-links'
 import { parse } from 'yaml'
 import { validateWikiOutput } from './scripts/wiki-output-check.mjs'
+import { getNewsContentMeta } from './utils/news-content-meta.mjs'
 
 const getMarkdownFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -96,12 +97,14 @@ export default defineNuxtConfig({
         await validateWikiOutput(nitro.options.output.publicDir, nitro.options.rootDir)
       })
     },
-    'content:file:afterParse'({ content }) {
+    'content:file:afterParse'({ file, content }) {
       const wikiMeta = getWikiContentMeta(content.stem)
 
       if (wikiMeta) {
         Object.assign(content, wikiMeta)
       }
+      const newsMeta = getNewsContentMeta(content.stem, file.body)
+      if (newsMeta) Object.assign(content, newsMeta)
     }
   },
   app: {

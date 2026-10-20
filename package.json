@@ -11,15 +11,17 @@
     "generate": "nuxt generate",
     "wiki:check": "node scripts/wiki-check.mjs",
     "content:sync": "node --env-file-if-exists=.env scripts/sync-content.mjs",
-    "predev": "npm run content:sync && npm run members:check",
-    "prebuild": "npm run content:sync && npm run members:check && npm run wiki:check",
-    "pregenerate": "npm run content:sync && npm run members:check && npm run wiki:check",
+    "predev": "npm run content:sync && npm run members:check && npm run news:check",
+    "prebuild": "npm run content:sync && npm run members:check && npm run wiki:check && npm run news:check",
+    "pregenerate": "npm run content:sync && npm run members:check && npm run wiki:check && npm run news:check",
     "preview": "nuxt preview",
     "members:check": "node scripts/member-check.mjs",
     "members:test": "node --experimental-strip-types --test tests/members.test.mjs",
     "wiki:test": "node --test tests/wiki-authors.test.mjs",
     "wiki:output-check": "node --experimental-strip-types scripts/wiki-output-check.mjs",
-    "wiki:output-test": "node --experimental-strip-types --test tests/wiki-output.test.mjs"
+    "wiki:output-test": "node --experimental-strip-types --test tests/wiki-output.test.mjs",
+    "news:check": "node scripts/news-check.mjs",
+    "news:test": "node --test tests/news.test.mjs"
   },
   "dependencies": {
     "@nuxt/content": "^3.13.0",
