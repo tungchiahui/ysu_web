@@ -2,7 +2,7 @@
 import { site } from '~/data/site'
 import { dashboardTaskState, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
 
-useHead({ title: `任务看板 | ${site.shortName}`, meta: [{ name: 'robots', content: 'noindex, nofollow' }] })
+useHead({ title: `任务看板 | ${site.shortName}`, meta: [{ name: 'robots', content: 'noindex, nofollow' }], bodyAttrs: { class: 'dashboard-tech' } })
 const route = useRoute()
 const screen = ref(false)
 const data = shallowRef<DashboardData | null>(null)
@@ -184,8 +184,12 @@ onBeforeUnmount(() => {
 <template>
   <main class="dashboard-page" :class="{ 'is-screen': screen }">
     <header class="dashboard-heading">
-      <div><p class="eyebrow">{{ site.shortName }} · Team Dashboard</p><h1>任务看板</h1><p class="dashboard-clock">{{ clock || '任务进展，一目了然。' }}</p></div>
+      <div class="dashboard-identity">
+        <span class="dashboard-insignia" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><path d="M32 3 57 17v30L32 61 7 47V17Z"/><path d="m15 22 17 8 17-8-7 15-10 9-10-9Z"/><path d="m22 27 10 6 10-6M32 33v13M7 17l8 5m42-5-8 5"/></svg></span>
+        <div><p class="eyebrow">{{ site.shortName }} / Mission Control</p><h1>任务看板</h1><p class="dashboard-clock">{{ clock || '任务进展，一目了然。' }}</p></div>
+      </div>
       <div class="dashboard-actions">
+        <span class="dashboard-connection" :class="{ 'is-online': phase === 'ready' && !updateInterrupted }"><i aria-hidden="true" />{{ loading ? '正在同步' : phase === 'ready' ? updateInterrupted ? '等待更新' : '数据已同步' : phase === 'locked' ? '等待解锁' : '暂未连接' }}</span>
         <button type="button" :disabled="loading" @click="refresh">{{ loading ? '更新中…' : '刷新' }}</button>
         <button type="button" :aria-pressed="screen" @click="toggleScreen">{{ screen ? '退出大屏' : '大屏模式' }}</button>
         <button v-if="data && authorization" type="button" @click="lock">锁定</button>
@@ -193,11 +197,13 @@ onBeforeUnmount(() => {
     </header>
 
     <section v-if="phase === 'locked'" class="dashboard-gate" aria-labelledby="dashboard-unlock-title">
+      <div class="dashboard-radar" aria-hidden="true"><span /><i /></div>
       <p class="eyebrow">Team Access</p><h2 id="dashboard-unlock-title">队内任务看板</h2><p>输入访问口令，查看团队任务进展。</p>
       <form @submit.prevent="unlock"><label for="dashboard-code" class="visually-hidden">访问口令</label><input id="dashboard-code" v-model="accessCode" type="password" required maxlength="1000" autocomplete="current-password" placeholder="访问口令"><button type="submit" :disabled="loading">{{ loading ? '验证中…' : '进入看板' }}</button></form>
       <p v-if="message" role="alert" class="dashboard-warning">{{ message }}</p>
     </section>
     <section v-else-if="!data" class="dashboard-gate" aria-live="polite">
+      <div class="dashboard-radar" aria-hidden="true"><span /><i /></div>
       <h2>{{ phase === 'loading' ? '正在读取任务…' : phase === 'closed' ? '看板尚未开放' : '暂时无法更新' }}</h2>
       <p>{{ message || '稍等片刻，正在获取最新进展。' }}</p>
       <button v-if="phase === 'error'" type="button" :disabled="loading" @click="refresh">重新加载</button>
@@ -237,7 +243,7 @@ onBeforeUnmount(() => {
         <aside class="dashboard-ranks" aria-label="个人任务统计">
           <section v-for="rank in [{ label: '待办任务榜', rows: todoRanks }, { label: '已完成任务榜', rows: doneRanks }]" :key="rank.label" class="dashboard-panel">
             <div class="dashboard-panel-heading"><h2>{{ rank.label }}</h2><span>按任务数</span></div>
-            <ol v-if="rank.rows.length" class="dashboard-rank-list"><li v-for="(person, index) in rank.rows.slice(0, screen ? 4 : 8)" :key="person.key"><span class="dashboard-rank-number">{{ String(index + 1).padStart(2, '0') }}</span><img v-if="person.avatar" :src="person.avatar" alt="" loading="lazy" referrerpolicy="no-referrer"><span v-else class="dashboard-avatar" aria-hidden="true">{{ person.name.slice(0, 1) }}</span><span class="dashboard-rank-name">{{ person.name }}</span><strong>{{ person.count }}<small> 项</small></strong></li></ol>
+            <ol v-if="rank.rows.length" class="dashboard-rank-list"><li v-for="(person, index) in rank.rows.slice(0, screen ? 4 : 8)" :key="person.key" :style="{ '--rank-width': `${person.count / (rank.rows[0]?.count || 1) * 100}%` }"><span class="dashboard-rank-number">{{ String(index + 1).padStart(2, '0') }}</span><img v-if="person.avatar" :src="person.avatar" alt="" loading="lazy" referrerpolicy="no-referrer"><span v-else class="dashboard-avatar" aria-hidden="true">{{ person.name.slice(0, 1) }}</span><span class="dashboard-rank-name">{{ person.name }}</span><strong>{{ person.count }}<small> 项</small></strong></li></ol>
             <p v-else class="dashboard-empty">暂无记录</p>
           </section>
         </aside>
