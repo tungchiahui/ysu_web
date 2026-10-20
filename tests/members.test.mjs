@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { z } from '@nuxt/content'
 import { createMemberSchema } from '../utils/member-schema.mjs'
-import { matchesMember, memberRoleText, memberSeasonText, hasMemberSeason, seasonFilterLabel } from '../app/utils/members.ts'
+import { matchesMember, memberRoleText, memberSeasonText, hasMemberSeason, seasonFilterLabel, memberSections } from '../app/utils/members.ts'
 import { checkMembers } from '../scripts/member-check.mjs'
 
 const schema = createMemberSchema(z)
@@ -71,6 +71,38 @@ test('老师按实际指导赛季显示，不参与学生职务筛选', () => {
   assert.equal(matchesMember(teacher, { season: 'all', kind: 'teacher', group: 'all', role: 'all', search: '' }), true)
   assert.equal(matchesMember(teacher, { season: 'all', kind: 'teacher', group: 'all', role: '成员', search: '' }), false)
   assert.equal(memberSeasonText({ ...teacher, seasons: [{ year: 2024 }, { year: 2025 }, { year: 2026 }] }), '2024–2026')
+})
+
+test('队长、副队长、项管独立分区，兼任组长不重复，各组组长排在成员前面', () => {
+  const person = (name, group, roles) => ({ ...student, name, seasons: [{ year: 2027, group, roles }] })
+  const captain = person('队长兼组长', '机械组', ['队长', '组长'])
+  const vice = person('副队长', '电控组', ['副队长'])
+  const manager = person('项管', '运营组', ['项管'])
+  const roster = [student, person('机械成员', '机械组', ['成员']), captain, vice, manager,
+    person('机械组长', '机械组', ['组长']), person('算法组长', '算法组', ['组长']), teacher]
+  const sections = memberSections(roster, '2027')
+  assert.deepEqual(sections.map(section => [section.label, section.members.map(member => member.name)]), [
+    ['指导老师', ['测试老师']],
+    ['团队负责人', ['队长兼组长', '副队长', '项管']],
+    ['机械组', ['机械组长', '机械成员']],
+    ['算法组', ['算法组长', '测试学生']]
+  ])
+  assert.equal(sections.flatMap(section => section.members).length, roster.length)
+  assert.deepEqual(memberSections([]), [])
+})
+
+test('团队分区与组长排序使用符合筛选的同一赛季任职', () => {
+  const history = { ...student, name: '历年成员', seasons: [
+    { year: 2027, group: '机械组', roles: ['队长', '组长'] },
+    { year: 2028, group: '算法组', roles: ['成员'] }
+  ] }
+  const groupLeader = { ...student, name: '算法组长', seasons: [{ year: 2028, group: '算法组', roles: ['组长'] }] }
+  assert.equal(memberSections([history], '2027')[0].label, '团队负责人')
+  assert.deepEqual(memberSections([history, groupLeader], '2028')[0].members.map(member => member.name), ['算法组长', '历年成员'])
+  assert.equal(memberSections([history])[0].label, '算法组')
+  assert.equal(memberSections([history], 'all', '机械组')[0].label, '团队负责人')
+  assert.equal(memberSections([history], 'all', 'all', '队长')[0].label, '团队负责人')
+  assert.deepEqual(memberSections([history], 'all', '算法组', '队长'), [])
 })
 
 test('赛季值仅显示四位年份，顶部筛选显示两位年份加赛季', () => {

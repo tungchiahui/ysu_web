@@ -29,6 +29,23 @@ export function memberGroups(member: Member, season = 'all') {
   return [...new Set(memberSeasons(member, season).flatMap(item => item.group ? [item.group] : []))]
 }
 
+export function memberSections(members: Member[], season = 'all', group = 'all', role = 'all') {
+  // 全部赛季取最近一条符合筛选的任职，分区与排序使用同一赛季的职务。
+  const entries = members.map(member => {
+    const record = memberSeasons(member, season).find(item =>
+      (group === 'all' || item.group === group) && (role === 'all' || item.roles?.includes(role)))
+    const leader = record?.roles?.some(value => ['队长', '副队长', '项管'].includes(value))
+    return { member, record, label: member.kind === 'teacher' ? '指导老师' : leader ? '团队负责人' : record?.group }
+  })
+  return ['指导老师', '团队负责人', ...MEMBER_GROUPS].map(label => ({
+    label,
+    members: entries.filter(entry => entry.label === label)
+      .sort((a, b) => label === '指导老师' || label === '团队负责人' ? 0
+        : Number(b.record?.roles?.includes('组长') || false) - Number(a.record?.roles?.includes('组长') || false))
+      .map(entry => entry.member)
+  })).filter(section => section.members.length)
+}
+
 export function seasonRoleText(season: MemberSeason) {
   return (season.roles || []).map(role => role === '组长' || role === '成员' ? `${season.group}${role}` : role).join('、')
 }

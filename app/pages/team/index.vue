@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { site } from '~/data/site'
-import { MEMBER_GROUPS, MEMBER_ROLES, hasMemberSeason, matchesMember, memberGroups, memberSeasons, seasonFilterLabel, type Member } from '~/utils/members'
+import { MEMBER_GROUPS, MEMBER_ROLES, hasMemberSeason, matchesMember, memberSections, memberSeasons, seasonFilterLabel, type Member } from '~/utils/members'
 
 useHead({ title: `成员 | ${site.fullName}` })
 const { data: rawMembers } = await useAsyncData('members:list', () => queryCollection('members').all() as Promise<Member[]>)
@@ -31,11 +31,8 @@ const filteredMembers = computed(() => allMembers.value.filter(member => matches
   season: selectedSeason.value, kind: selectedKind.value, group: selectedGroup.value,
   role: selectedRole.value, search: search.value
 })))
-const sectionFor = (member: Member) => member.kind === 'teacher' ? '指导老师'
-  : selectedGroup.value !== 'all' ? selectedGroup.value : memberGroups(member, selectedSeason.value)[0]
-const groupedMembers = computed(() => ['指导老师', ...MEMBER_GROUPS]
-  .map(label => ({ label, members: filteredMembers.value.filter(member => sectionFor(member) === label) }))
-  .filter(group => group.members.length))
+const groupedMembers = computed(() => memberSections(filteredMembers.value,
+  selectedSeason.value, selectedGroup.value, selectedRole.value))
 const stats = computed(() => [
   { value: allMembers.value.filter(member => member.kind === 'student').length, label: '学生档案' },
   { value: allMembers.value.filter(member => member.kind === 'teacher' && hasMemberSeason(member, selectedSeason.value)).length, label: '指导老师' },
