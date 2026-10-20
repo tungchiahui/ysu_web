@@ -17,6 +17,7 @@ const navItems = [
 
 const theme = ref<Theme>('light')
 const showMobileNav = ref(false)
+const navToggle = ref<HTMLButtonElement | null>(null)
 
 const isActive = (to: string) => {
   if (to === '/') {
@@ -41,7 +42,9 @@ const applyTheme = (nextTheme: Theme, persist = true) => {
 const preferredTheme = () => {
   if (!import.meta.client) return 'light'
 
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light'
 }
 
 const toggleTheme = () => {
@@ -56,27 +59,44 @@ const toggleMobileNav = () => {
   showMobileNav.value = !showMobileNav.value
 }
 
-const themeLabel = computed(() => theme.value === 'dark' ? '切换浅色模式' : '切换深色模式')
-const themeIcon = computed(() => theme.value === 'dark' ? '☀' : '☾')
-const mobileNavLabel = computed(() => showMobileNav.value ? '关闭导航菜单' : '打开导航菜单')
-
-watch(() => route.fullPath, () => {
+const dismissMobileNav = () => {
+  if (!showMobileNav.value) return
   closeMobileNav()
-})
+  navToggle.value?.focus()
+}
+
+const themeLabel = computed(() =>
+  theme.value === 'dark' ? '切换浅色模式' : '切换深色模式'
+)
+const mobileNavLabel = computed(() =>
+  showMobileNav.value ? '关闭导航菜单' : '打开导航菜单'
+)
+
+watch(
+  () => route.fullPath,
+  () => {
+    closeMobileNav()
+  }
+)
 
 onMounted(() => {
   const storedTheme = localStorage.getItem('ysu-theme')
-  applyTheme(storedTheme === 'light' || storedTheme === 'dark' ? storedTheme : preferredTheme(), Boolean(storedTheme))
+  applyTheme(
+    storedTheme === 'light' || storedTheme === 'dark'
+      ? storedTheme
+      : preferredTheme(),
+    Boolean(storedTheme)
+  )
 })
 </script>
 
 <template>
-  <header class="site-header">
+  <header class="site-header" @keydown.esc="dismissMobileNav">
     <NuxtLink class="brand" to="/" aria-label="返回首页">
-      <img class="brand-logo" :src="site.logo" :alt="site.logoAlt">
+      <img class="brand-logo" :src="site.logo" :alt="site.logoAlt" />
       <span class="brand-copy">
         <span class="brand-title">{{ site.headerName }}</span>
-        <span class="brand-subtitle">{{ site.tagline }}</span>
+        <span class="brand-subtitle">YAN YING / ROBOTICS</span>
       </span>
     </NuxtLink>
 
@@ -96,14 +116,18 @@ onMounted(() => {
         aria-label="主导航"
       >
         <NuxtLink
-          v-for="item in navItems"
+          v-for="(item, index) in navItems"
           :key="item.to"
           class="nav-link"
           :class="{ active: isActive(item.to) }"
           :to="item.to"
+          :aria-current="isActive(item.to) ? 'page' : undefined"
           @click="closeMobileNav"
         >
-          {{ item.label }}
+          <span class="nav-number" aria-hidden="true">{{
+            String(index + 1).padStart(2, '0')
+          }}</span
+          >{{ item.label }}
         </NuxtLink>
       </nav>
 
@@ -114,11 +138,30 @@ onMounted(() => {
         :title="themeLabel"
         @click="toggleTheme"
       >
-        <span class="theme-toggle-icon" aria-hidden="true">{{ themeIcon }}</span>
+        <svg
+          class="theme-toggle-icon"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          aria-hidden="true"
+        >
+          <template v-if="theme === 'dark'">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"
+            />
+          </template>
+          <path v-else d="M20.9 13.3A9 9 0 0 1 10.7 3.1a9 9 0 1 0 10.2 10.2Z" />
+        </svg>
         <span class="visually-hidden">{{ themeLabel }}</span>
       </button>
 
       <button
+        ref="navToggle"
         class="nav-toggle"
         :class="{ 'is-open': showMobileNav }"
         type="button"

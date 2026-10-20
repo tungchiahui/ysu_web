@@ -1,18 +1,34 @@
 <script setup lang="ts">
 import type { HomePromoSlide } from '~/data/home-promos'
 
-const props = withDefaults(defineProps<{
-  slides: HomePromoSlide[]
-  autoplayMs?: number
-}>(), {
-  autoplayMs: 6500
-})
+const props = withDefaults(
+  defineProps<{
+    slides: HomePromoSlide[]
+    autoplayMs?: number
+  }>(),
+  {
+    autoplayMs: 6500
+  }
+)
 
 const activeIndex = ref(0)
 const isPaused = ref(false)
 let timer: number | null = null
 let pointerStartX: number | null = null
 let didSwipe = false
+
+const titleParts = (slide: HomePromoSlide) => {
+  const highlight = slide.highlight
+  if (!highlight) return [slide.title]
+  const index = slide.title.indexOf(highlight)
+  return index < 0
+    ? [slide.title]
+    : [
+        slide.title.slice(0, index),
+        highlight,
+        slide.title.slice(index + highlight.length)
+      ]
+}
 
 const stopAutoplay = () => {
   if (!timer) return
@@ -25,10 +41,11 @@ const startAutoplay = () => {
   stopAutoplay()
 
   if (
-    isPaused.value
-    || props.slides.length < 2
-    || window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  ) return
+    isPaused.value ||
+    props.slides.length < 2 ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+    return
 
   timer = window.setInterval(() => {
     activeIndex.value = (activeIndex.value + 1) % props.slides.length
@@ -51,7 +68,11 @@ const toggleAutoplay = () => {
 
 const handleFocusOut = (event: FocusEvent) => {
   const nextTarget = event.relatedTarget
-  if (nextTarget instanceof Node && (event.currentTarget as HTMLElement).contains(nextTarget)) return
+  if (
+    nextTarget instanceof Node &&
+    (event.currentTarget as HTMLElement).contains(nextTarget)
+  )
+    return
 
   startAutoplay()
 }
@@ -81,16 +102,19 @@ const handleLinkClick = (event: MouseEvent) => {
   if (didSwipe) event.preventDefault()
 }
 
-watch(() => props.slides.length, (length) => {
-  if (!length) {
-    activeIndex.value = 0
-    stopAutoplay()
-    return
-  }
+watch(
+  () => props.slides.length,
+  (length) => {
+    if (!length) {
+      activeIndex.value = 0
+      stopAutoplay()
+      return
+    }
 
-  if (activeIndex.value >= length) activeIndex.value = 0
-  startAutoplay()
-})
+    if (activeIndex.value >= length) activeIndex.value = 0
+    startAutoplay()
+  }
+)
 
 onMounted(startAutoplay)
 onBeforeUnmount(stopAutoplay)
@@ -128,27 +152,42 @@ onBeforeUnmount(stopAutoplay)
           :alt="slide.imageAlt"
           :style="{ objectPosition: slide.position || 'center' }"
           :loading="index === 0 ? 'eager' : 'lazy'"
-        >
+        />
         <span class="promo-shade" aria-hidden="true" />
         <span class="promo-grid" aria-hidden="true" />
 
         <span class="promo-copy">
           <span class="promo-kicker">{{ slide.kicker }}</span>
           <strong>
-            <span v-if="slide.highlight" class="promo-title-highlight">{{ slide.highlight }}</span>{{ slide.highlight ? slide.title.slice(slide.highlight.length) : slide.title }}
+            <span
+              v-for="(part, partIndex) in titleParts(slide)"
+              :key="partIndex"
+              :class="{ 'promo-title-highlight': partIndex === 1 }"
+              >{{ part }}</span
+            >
           </strong>
           <span class="promo-summary">{{ slide.summary }}</span>
           <span class="promo-cta">
             {{ slide.cta }}
-            <span aria-hidden="true">↗</span>
+            <span aria-hidden="true"><ArrowUpRight /></span>
           </span>
         </span>
       </NuxtLink>
 
-      <button class="promo-arrow promo-arrow-prev" type="button" aria-label="上一张宣传内容" @click="moveSlide(-1)">
+      <button
+        class="promo-arrow promo-arrow-prev"
+        type="button"
+        aria-label="上一张宣传内容"
+        @click="moveSlide(-1)"
+      >
         <span aria-hidden="true">←</span>
       </button>
-      <button class="promo-arrow promo-arrow-next" type="button" aria-label="下一张宣传内容" @click="moveSlide(1)">
+      <button
+        class="promo-arrow promo-arrow-next"
+        type="button"
+        aria-label="下一张宣传内容"
+        @click="moveSlide(1)"
+      >
         <span aria-hidden="true">→</span>
       </button>
 
@@ -163,7 +202,9 @@ onBeforeUnmount(stopAutoplay)
           @click="selectSlide(index)"
         >
           <span class="promo-index-line" aria-hidden="true" />
-          <span class="promo-index-number" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+          <span class="promo-index-number" aria-hidden="true">{{
+            String(index + 1).padStart(2, '0')
+          }}</span>
         </button>
       </div>
 

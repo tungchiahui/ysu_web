@@ -13,16 +13,14 @@
   display: grid;
   gap: 18px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 4px;
   padding: 24px;
-  background:
-    linear-gradient(90deg, rgba(201, 52, 52, 0.055), transparent 220px),
-    var(--surface);
+  background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
 .news-card:hover {
-  border-color: rgba(0, 137, 150, 0.32);
+  border-color: color-mix(in srgb, var(--link) 32%, transparent);
   box-shadow: var(--shadow-hover);
 }
 
@@ -87,10 +85,10 @@
 
 .news-tags span,
 .news-detail-meta span {
-  border: 1px solid rgba(0, 137, 150, 0.2);
+  border: 1px solid color-mix(in srgb, var(--link) 20%, transparent);
   border-radius: 999px;
   padding: 4px 9px;
-  background: rgba(0, 137, 150, 0.08);
+  background: color-mix(in srgb, var(--link) 8%, transparent);
   color: var(--cyan);
   font-size: 0.8rem;
   font-weight: 900;
@@ -106,7 +104,7 @@
   position: relative;
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 4px;
   background: #11191d;
   box-shadow: var(--shadow);
 }
@@ -157,7 +155,7 @@
   max-height: 680px;
   margin: 8px 0 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 4px;
   object-fit: contain;
   background: var(--media-bg);
   box-shadow: var(--shadow-soft);
