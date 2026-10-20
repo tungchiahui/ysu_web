@@ -144,6 +144,7 @@ export default defineNuxtConfig({
     '/research': { prerender: true },
     '/team': { prerender: true },
     '/team/**': { prerender: true },
+    '/dashboard': { prerender: true },
     '/news': { prerender: true },
     '/news/**': { prerender: true },
     '/wiki': { prerender: true },
@@ -158,7 +159,7 @@ export default defineNuxtConfig({
       // 限制预渲染并发，避免大量内容查询同时进行时出现空白产物。
       concurrency: 4,
       crawlLinks: true,
-      routes: ['/', '/research', '/team', '/news', '/wiki', '/recruitment', '/contact', ...memberRoutes, ...authorRoutes]
+      routes: ['/', '/research', '/team', '/dashboard', '/news', '/wiki', '/recruitment', '/contact', ...memberRoutes, ...authorRoutes]
     }
   }
 })
