@@ -78,7 +78,7 @@
 }
 
 .promo-slide {
-  --promo-accent: #c2d4e8;
+  --promo-accent: #ff6868;
   position: absolute;
   inset: 0;
   display: block;
@@ -99,11 +99,11 @@
 }
 
 .promo-slide.is-recruitment {
-  --promo-accent: #b8cbe0;
+  --promo-accent: #68e0c0;
 }
 
 .promo-slide.is-team {
-  --promo-accent: #c8d7e8;
+  --promo-accent: #7dd3fc;
 }
 
 .promo-image,
@@ -161,7 +161,7 @@
   gap: 10px;
   color: var(--promo-accent);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -177,7 +177,7 @@
   max-width: 620px;
   color: #ffffff;
   font-size: clamp(2.35rem, 4.2vw, 4.35rem);
-  font-weight: 700;
+  font-weight: 900;
   letter-spacing: -0.045em;
   line-height: 1.04;
   text-wrap: balance;
@@ -187,9 +187,11 @@
   display: inline-block;
   color: var(--promo-accent);
   font-size: 1.1em;
-  font-weight: 700;
+  font-weight: 900;
   letter-spacing: -0.055em;
-  text-shadow: 0 3px 18px rgba(0, 0, 0, 0.34);
+  text-shadow:
+    0 0 24px color-mix(in srgb, var(--promo-accent) 46%, transparent),
+    0 3px 18px rgba(0, 0, 0, 0.34);
 }
 
 .promo-summary {
@@ -212,7 +214,7 @@
   background: color-mix(in srgb, var(--promo-accent) 18%, rgba(8, 14, 17, 0.62));
   color: #ffffff;
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 900;
   transition:
     background-color 0.2s ease,
     border-color 0.2s ease,
@@ -324,7 +326,7 @@
 .promo-index-number {
   color: rgba(255, 255, 255, 0.58);
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 900;
   letter-spacing: 0.08em;
 }
 

@@ -19,7 +19,6 @@
 }
 
 .button.primary {
-  color: var(--on-accent);
   border-color: var(--red);
   background: var(--red);
 }
@@ -73,7 +72,7 @@
   align-items: center;
   border-bottom: 2px solid var(--red);
   color: var(--red-dark);
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .text-link:hover {

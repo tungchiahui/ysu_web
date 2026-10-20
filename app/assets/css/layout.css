@@ -78,8 +78,8 @@
 
 .nav-link:hover,
 .nav-link.active {
-  border-color: color-mix(in srgb, var(--red) 22%, transparent);
-  background: color-mix(in srgb, var(--red) 8%, transparent);
+  border-color: rgba(38, 108, 186, 0.22);
+  background: rgba(38, 108, 186, 0.08);
   color: var(--red-dark);
 }
 
@@ -100,7 +100,7 @@
 }
 
 .theme-toggle:hover {
-  border-color: color-mix(in srgb, var(--cyan) 32%, transparent);
+  border-color: rgba(0, 137, 150, 0.32);
   color: var(--cyan);
 }
 
@@ -135,7 +135,7 @@
 }
 
 .nav-toggle:hover {
-  border-color: color-mix(in srgb, var(--red) 28%, transparent);
+  border-color: rgba(38, 108, 186, 0.28);
   color: var(--red-dark);
 }
 

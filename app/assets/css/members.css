@@ -18,7 +18,7 @@
 .member-search label {
   color: var(--ink-soft);
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .member-search input {
@@ -34,8 +34,8 @@
 }
 
 .member-search input:focus {
-  border-color: color-mix(in srgb, var(--cyan) 60%, transparent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyan) 12%, transparent);
+  border-color: rgba(0, 137, 150, 0.6);
+  box-shadow: 0 0 0 3px rgba(0, 137, 150, 0.12);
 }
 
 .filter-row {
@@ -60,8 +60,8 @@
 
 .filter-chip:hover,
 .filter-chip.active {
-  border-color: color-mix(in srgb, var(--red) 28%, transparent);
-  background: color-mix(in srgb, var(--red) 8%, transparent);
+  border-color: rgba(201, 52, 52, 0.28);
+  background: rgba(201, 52, 52, 0.08);
   color: var(--red-dark);
 }
 
@@ -89,7 +89,9 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 24px 18px 20px;
-  background: var(--surface);
+  background:
+    linear-gradient(180deg, rgba(0, 137, 150, 0.07), transparent 42%),
+    var(--surface);
   box-shadow: var(--shadow-card);
   transition:
     border-color 160ms ease,
@@ -98,7 +100,7 @@
 }
 
 .member-card:hover {
-  border-color: color-mix(in srgb, var(--cyan) 36%, transparent);
+  border-color: rgba(0, 137, 150, 0.36);
   box-shadow: var(--shadow-hover);
   transform: translateY(-2px);
 }
@@ -169,7 +171,7 @@
 .member-info-row span {
   color: var(--muted);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 900;
   line-height: 1.45;
 }
 
@@ -194,18 +196,18 @@
   display: inline-flex;
   min-height: 30px;
   align-items: center;
-  border: 1px solid color-mix(in srgb, var(--red) 22%, transparent);
+  border: 1px solid rgba(201, 52, 52, 0.22);
   border-radius: 999px;
   padding: 5px 10px;
-  background: color-mix(in srgb, var(--red) 8%, transparent);
+  background: rgba(201, 52, 52, 0.08);
   color: var(--red-dark);
   font-size: 0.78rem;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .member-card-links a:hover {
-  border-color: color-mix(in srgb, var(--cyan) 36%, transparent);
-  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+  border-color: rgba(0, 137, 150, 0.36);
+  background: rgba(0, 137, 150, 0.08);
   color: var(--cyan);
 }
 
@@ -218,10 +220,10 @@
 
 .member-tags span,
 .profile-tags span {
-  border: 1px solid color-mix(in srgb, var(--cyan) 22%, transparent);
+  border: 1px solid rgba(0, 137, 150, 0.22);
   border-radius: 999px;
   padding: 4px 8px;
-  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+  background: rgba(0, 137, 150, 0.08);
   color: var(--cyan);
   font-size: 0.78rem;
   font-weight: 800;
@@ -329,7 +331,7 @@
 .profile-role {
   color: var(--red-dark);
   font-size: 1.15rem;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .profile-lines {
@@ -367,17 +369,17 @@
   display: inline-flex;
   min-height: 38px;
   align-items: center;
-  border: 1px solid color-mix(in srgb, var(--red) 26%, transparent);
+  border: 1px solid rgba(201, 52, 52, 0.26);
   border-radius: 8px;
   padding: 8px 12px;
-  background: color-mix(in srgb, var(--red) 8%, transparent);
+  background: rgba(201, 52, 52, 0.08);
   color: var(--red-dark);
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .profile-links a:hover {
-  border-color: color-mix(in srgb, var(--cyan) 40%, transparent);
-  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+  border-color: rgba(0, 137, 150, 0.4);
+  background: rgba(0, 137, 150, 0.08);
   color: var(--cyan);
 }
 
@@ -431,7 +433,7 @@
 .member-filter-label {
   color: var(--ink-soft);
   font-size: 0.9rem;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .member-profile-content.no-related {

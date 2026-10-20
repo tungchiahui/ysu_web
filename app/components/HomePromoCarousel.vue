@@ -169,7 +169,7 @@ onBeforeUnmount(stopAutoplay)
           <span class="promo-summary">{{ slide.summary }}</span>
           <span class="promo-cta">
             {{ slide.cta }}
-            <span aria-hidden="true"><ArrowUpRight /></span>
+            <span aria-hidden="true">↗</span>
           </span>
         </span>
       </NuxtLink>

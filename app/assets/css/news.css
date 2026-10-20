@@ -15,12 +15,14 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 24px;
-  background: var(--surface);
+  background:
+    linear-gradient(90deg, rgba(201, 52, 52, 0.055), transparent 220px),
+    var(--surface);
   box-shadow: var(--shadow-soft);
 }
 
 .news-card:hover {
-  border-color: color-mix(in srgb, var(--cyan) 32%, transparent);
+  border-color: rgba(0, 137, 150, 0.32);
   box-shadow: var(--shadow-hover);
 }
 
@@ -61,7 +63,7 @@
 .news-date {
   color: var(--cyan);
   font-size: 0.86rem;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .news-card h3 {
@@ -85,13 +87,13 @@
 
 .news-tags span,
 .news-detail-meta span {
-  border: 1px solid color-mix(in srgb, var(--cyan) 20%, transparent);
+  border: 1px solid rgba(0, 137, 150, 0.2);
   border-radius: 999px;
   padding: 4px 9px;
-  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+  background: rgba(0, 137, 150, 0.08);
   color: var(--cyan);
   font-size: 0.8rem;
-  font-weight: 700;
+  font-weight: 900;
 }
 
 .news-detail {
