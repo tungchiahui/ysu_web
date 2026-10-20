@@ -65,13 +65,13 @@ GitHub Actions 自带的 `GITHUB_TOKEN` 通常只授权当前仓库，读取另�
 
 首次部署前刷新仓库选择，确保使用包含本次改造和 `edgeone.json` 的最新 `main` 提交。部署成功后先验证首页、Wiki、成员页面和视频，再绑定自定义域名。
 
-网站仓库 `main` 提交会触发 EO 的 Git 集成部署。仅提交内容仓库不会自动触发 EO，需在 EO 重新部署，或另行连接部署钩子；本仓库的 Build 工作流只生成产物。
+网站仓库 `main` 提交会触发 EO 的 Git 集成部署。内容仓库每次 push 到 `main`，由其 `notify-website.yml` 调用同一个 EO 项目的部署钩子；需在内容仓库配置 Repository Secret `EO_DEPLOY_HOOK_URL`，钩子目标为本仓库的 `main`。EO 构建时拉取内容仓库最新的 `main`，不要把 `CONTENT_REF` 固定为旧提交。本仓库的 Build 工作流只生成产物。
 
 ## 持续构建
 
 `.github/workflows/build.yml` 在网站代码更新或手动触发时拉取内容、检查 Wiki、生成并上传静态产物，暂不部署到线上。
 
-可选仓库变量 `CONTENT_REPOSITORY`、`CONTENT_REF` 与同名环境变量含义一致；私有仓库配置 Secret `CONTENT_GIT_TOKEN`。内容仓库提供可选的跨仓库触发工作流，配置方式见内容仓库 README。没有配置触发凭据时，可手动运行本仓库的 Build 工作流。
+可选仓库变量 `CONTENT_REPOSITORY`、`CONTENT_REF` 与同名环境变量含义一致；私有仓库配置 Secret `CONTENT_GIT_TOKEN`。内容仓库通过 EO 部署钩子触发线上发布，配置方式见内容仓库 README，不需要跨仓库 Actions 写入 token。触发工作流成功仅表示 EO 接受部署请求，实际发布结果在 EO 控制台查看。
 
 ## 视觉设计
 
