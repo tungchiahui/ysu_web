@@ -1,4 +1,4 @@
-export const MEMBER_GROUPS = ['机械组', '电控组', '硬件组', '算法组']
+export const MEMBER_GROUPS = ['机械组', '电控组', '硬件组', '算法组', '运营组']
 export const MEMBER_ROLES = ['队长', '副队长', '组长', '项管', '成员']
 
 // Nuxt Content 的数据库字段与构建前校验共用同一份定义。
@@ -30,7 +30,7 @@ export function createMemberSchema(z) {
       if (years.has(season.year)) issue(['seasons', index, 'year'], '同一人每个赛季只能填写一条记录')
       years.add(season.year)
       if (person.kind === 'student') {
-        if (!season.group) issue(['seasons', index, 'group'], '学生赛季记录必须填写技术组')
+        if (!season.group) issue(['seasons', index, 'group'], '学生赛季记录必须填写组别')
         if (!season.roles?.length) issue(['seasons', index, 'roles'], '学生赛季记录必须填写职务')
         const roles = season.roles || []
         if (new Set(roles).size !== roles.length) issue(['seasons', index, 'roles'], '职务不能重复')

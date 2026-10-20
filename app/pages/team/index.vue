@@ -40,7 +40,7 @@ const stats = computed(() => [
   { value: allMembers.value.filter(member => member.kind === 'student').length, label: '学生档案' },
   { value: allMembers.value.filter(member => member.kind === 'teacher' && hasMemberSeason(member, selectedSeason.value)).length, label: '指导老师' },
   { value: filteredMembers.value.length, label: '当前筛选' },
-  { value: MEMBER_GROUPS.length, label: '技术组别' }
+  { value: MEMBER_GROUPS.length, label: '成员组别' }
 ])
 </script>
 
@@ -50,7 +50,7 @@ const stats = computed(() => [
       <div>
         <p class="eyebrow">Team Roster</p>
         <h1>成员</h1>
-        <p>按赛季、技术组和职务浏览战队成员与指导老师档案。</p>
+        <p>按赛季、组别和职务浏览战队成员与指导老师档案。</p>
       </div>
     </section>
     <section class="stats-band members-stats" aria-label="成员概览">
@@ -75,7 +75,7 @@ const stats = computed(() => [
       </div>
       <template v-if="selectedKind !== 'teacher'">
         <div class="member-filter">
-          <span class="member-filter-label">技术组</span>
+          <span class="member-filter-label">组别</span>
           <div class="filter-row" aria-label="组别筛选">
             <button v-for="group in groupDefs" :key="group.value" class="filter-chip" :class="{ active: selectedGroup === group.value }" :aria-pressed="selectedGroup === group.value" type="button" @click="selectedGroup = group.value">{{ group.label }}</button>
           </div>

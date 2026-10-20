@@ -19,7 +19,7 @@ test('人员字段拒绝旧分类、梯队、缺失学生任职及错误年份',
   valid(teacher)
   invalid({ ...student, university: '燕山大学' })
   invalid({ ...teacher, university: '山东理工大学' })
-  for (const group of ['控制组', '电路组', '运营组', '梯队']) invalid({ ...student, seasons: [{ year: 2027, group, roles: ['成员'] }] })
+  for (const group of ['控制组', '电路组', '运营', '梯队']) invalid({ ...student, seasons: [{ year: 2027, group, roles: ['成员'] }] })
   invalid({ ...student, grade: '2026' })
   invalid({ ...student, seasons: [] })
   invalid({ ...student, seasons: [student.seasons[0], student.seasons[0]] })
@@ -44,6 +44,22 @@ test('组别与职务筛选不会拼接不同赛季的任职', () => {
   assert.equal(matchesMember(history, { ...filter, season: '2027', role: '组长' }), false)
   assert.equal(memberRoleText(history, '2028'), '算法组组长')
   assert.equal(memberRoleText(student, '2027'), '算法组成员')
+})
+
+test('运营组资料可校验，筛选和职务展示使用对应赛季', () => {
+  const operations = { ...student, seasons: [
+    { year: 2027, group: '运营组', roles: ['副队长', '组长'] },
+    { year: 2026, group: '算法组', roles: ['成员'] }
+  ] }
+  valid(operations)
+  const filter = { season: '2027', kind: 'student', group: '运营组', role: '组长', search: '运营' }
+  assert.equal(matchesMember(operations, filter), true)
+  assert.equal(matchesMember(operations, { ...filter, season: '2026' }), false)
+  assert.equal(matchesMember(operations, { ...filter, season: 'all', role: '成员' }), false)
+  assert.equal(memberRoleText(operations, '2027'), '副队长、运营组组长')
+  const member = { ...student, seasons: [{ year: 2027, group: '运营组', roles: ['成员'] }] }
+  valid(member)
+  assert.equal(memberRoleText(member, '2027'), '运营组成员')
 })
 
 test('老师按实际指导赛季显示，不参与学生职务筛选', () => {
