@@ -5,10 +5,19 @@ import { prepareCompetitions, competitionTimeLeft } from '../app/utils/competiti
 
 const event = { name: '测试赛事', startsAt: '2027-01-01T09:00:00+08:00', dateStatus: 'confirmed', enabled: true }
 
-test('实际赛事默认待定，不把猜测时间作为正式赛程', () => {
-  assert.deepEqual(competitions.map(item => item.name), ['2027 RMUL 山东站', '2027 RMUC'])
-  assert(prepareCompetitions(competitions).every(item => item.target === null && item.dateStatus === 'pending'))
+test('实际赛事按用户选择参考2026比赛首场，不标记为正式赛程', () => {
+  assert.deepEqual(competitions.map(item => item.name), ['2027 RMUL 山东站', '2027 RMUC 东部赛区（济南）'])
+  assert(prepareCompetitions(competitions).every(item => item.target !== null && item.dateStatus === 'historical' && item.referenceYear === 2026))
+  assert.deepEqual(competitions.map(item => item.startsAt), ['2027-03-20T15:00:00+08:00', '2027-05-21T08:30:00+08:00'])
   assert.equal(competitionTimeLeft(null, Date.now()).state, 'pending')
+})
+
+test('历史参考必须明确上一赛季年份，转为正式赛程时移除参考标记', () => {
+  assert.doesNotThrow(() => prepareCompetitions([{ ...event, dateStatus: 'historical', referenceYear: 2026 }]))
+  for (const referenceYear of [undefined, 2025, 2027, '2026', 2026.5]) {
+    assert.throws(() => prepareCompetitions([{ ...event, dateStatus: 'historical', referenceYear }]), /referenceYear/)
+  }
+  assert.throws(() => prepareCompetitions([{ ...event, referenceYear: 2026 }]), /移除参考年份/)
 })
 
 test('明确按北京时间解析，错误日期、缺失时区及矛盾状态阻止构建', () => {

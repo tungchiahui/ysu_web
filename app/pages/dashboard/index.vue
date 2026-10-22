@@ -277,11 +277,11 @@ onBeforeUnmount(() => {
       <section v-if="eventCountdowns.length" class="dashboard-competitions" aria-label="赛事倒计时">
         <article v-for="event in eventCountdowns" :key="event.name" class="dashboard-panel dashboard-competition" :class="{ 'is-reached': event.state === 'reached' }">
           <div class="dashboard-competition-info">
-            <h2>{{ event.name }}<span v-if="event.dateStatus !== 'pending'" class="dashboard-event-status" :class="event.dateStatus">{{ event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span></h2>
-            <time v-if="event.target !== null" :datetime="event.startsAt || undefined">{{ formatEventTime(event.target) }} · 北京时间</time>
+            <h2>{{ event.name }}<span v-if="event.dateStatus !== 'pending'" class="dashboard-event-status" :class="event.dateStatus">{{ event.dateStatus === 'historical' ? `去年同期参考（${event.referenceYear}）` : event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span></h2>
+            <time v-if="event.target !== null" :datetime="event.startsAt || undefined">{{ formatEventTime(event.target) }} · 北京时间{{ event.dateStatus === 'historical' ? ' · 同期推算' : '' }}</time>
           </div>
           <div class="dashboard-competition-remaining">
-            <template v-if="event.state === 'counting'"><span class="dashboard-event-label">距离赛事</span><strong>{{ event.days }}<small> 天</small></strong><span class="dashboard-event-clock">{{ event.clock }}</span></template>
+            <template v-if="event.state === 'counting'"><span class="dashboard-event-label">{{ event.dateStatus === 'historical' ? '距离参考日期' : '距离赛事' }}</span><strong>{{ event.days }}<small> 天</small></strong><span class="dashboard-event-clock">{{ event.clock }}</span></template>
             <strong v-else class="dashboard-event-message">{{ event.state === 'pending' ? '日期待定' : event.state === 'waiting' ? '正在校时…' : '已到达节点' }}</strong>
           </div>
         </article>

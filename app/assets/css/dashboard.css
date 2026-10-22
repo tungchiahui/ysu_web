@@ -446,7 +446,7 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 .dashboard-competition-info { min-width: 0; flex: 1 1 180px; }
 .dashboard-competition h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; color: var(--ink); font-size: var(--dashboard-text); line-height: 1.5; }
 .dashboard-event-status { border: 1px solid var(--line); padding: 1px 6px; color: var(--green); font-size: calc(var(--dashboard-text) * .7); font-weight: 400; white-space: nowrap; }
-.dashboard-event-status.tentative { color: var(--gold); border-color: rgba(255, 179, 92, .35); }
+.dashboard-event-status.tentative, .dashboard-event-status.historical { color: var(--gold); border-color: rgba(255, 179, 92, .35); }
 .dashboard-competition time { display: block; margin-top: 5px; color: var(--muted); font-size: calc(var(--dashboard-text) * .8); }
 .dashboard-competition-remaining { display: flex; align-items: baseline; justify-content: flex-end; flex-wrap: wrap; gap: 5px 10px; flex: 0 1 auto; max-width: 100%; color: var(--cyan); font-family: var(--dashboard-mono); font-variant-numeric: tabular-nums; }
 .dashboard-competition-remaining strong { font-size: calc(var(--dashboard-text) * 1.6); line-height: 1.2; white-space: nowrap; }
