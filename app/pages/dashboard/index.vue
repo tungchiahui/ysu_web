@@ -119,10 +119,15 @@ async function refresh() {
       return
     }
     if (!result.ok || !Array.isArray(body?.tasks) || !body?.github) throw new Error('DATA_UNAVAILABLE')
+    const entering = !data.value
     data.value = body
     if (selectedGroup.value !== 'all' && !groups.value.includes(selectedGroup.value)) selectedGroup.value = 'all'
     phase.value = 'ready'
     message.value = ''
+    if (entering) {
+      await nextTick()
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    }
   } catch {
     if (!disposed && ticket === generation) {
       phase.value = data.value ? 'ready' : 'error'
@@ -209,15 +214,19 @@ onBeforeUnmount(() => {
 <template>
   <main class="dashboard-page" :class="{ 'is-screen': screen, 'is-gated': !data }">
     <header class="dashboard-heading">
-      <div class="dashboard-identity">
-        <span class="dashboard-insignia" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><path d="M32 3 57 17v30L32 61 7 47V17Z"/><path d="m15 22 17 8 17-8-7 15-10 9-10-9Z"/><path d="m22 27 10 6 10-6M32 33v13M7 17l8 5m42-5-8 5"/></svg></span>
-        <div><p class="eyebrow">{{ site.shortName }} / Mission Control</p><h1>任务看板</h1><p class="dashboard-clock">{{ clock || '任务进展，一目了然。' }}</p></div>
-      </div>
-      <div class="dashboard-actions">
+      <NuxtLink class="dashboard-identity" to="/" :aria-label="`${site.university}${site.shortName}，返回首页`">
+        <span class="dashboard-insignia"><img :src="site.logo" :alt="site.logoAlt" width="96" height="96"></span>
+        <div><strong class="dashboard-team-name">{{ site.university }}{{ site.shortName }}</strong><span class="dashboard-brand-caption">{{ site.englishName }}</span></div>
+      </NuxtLink>
+      <div class="dashboard-title-block"><p class="eyebrow">Mission Control</p><h1>任务看板</h1></div>
+      <div class="dashboard-header-controls">
+        <p class="dashboard-clock">{{ clock || '任务进展，一目了然。' }}</p>
+        <div class="dashboard-actions">
         <span class="dashboard-connection" :class="{ 'is-online': phase === 'ready' && !updateInterrupted }"><i aria-hidden="true" />{{ loading ? '正在同步' : phase === 'ready' ? updateInterrupted ? '等待更新' : '数据已同步' : phase === 'locked' ? '等待解锁' : '暂未连接' }}</span>
         <button type="button" :disabled="loading" @click="refresh">{{ loading ? '更新中…' : '刷新' }}</button>
         <button type="button" :aria-pressed="screen" @click="toggleScreen">{{ screen ? '退出大屏' : '大屏模式' }}</button>
         <button v-if="data && authorization" type="button" @click="lock">锁定</button>
+        </div>
       </div>
     </header>
 
