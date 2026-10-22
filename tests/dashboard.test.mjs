@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { normalizeDashboardRecords, dashboardTaskState, selectDashboardTasks, dashboardRanks, safeDashboardUrl } from '../utils/dashboard-data.mjs'
 import { createDashboardService } from '../utils/dashboard-service.mjs'
 import { dashboardFixtures } from './fixtures/dashboard.mjs'
+import { onRequest } from '../edge-functions/api/dashboard.js'
 
 const instant = Date.parse('2027-01-01T00:00:00+08:00')
 const env = { DASHBOARD_ENABLED: 'true', DASHBOARD_ACCESS_CODE: 'test-access-code-only',
@@ -10,6 +11,13 @@ const env = { DASHBOARD_ENABLED: 'true', DASHBOARD_ACCESS_CODE: 'test-access-cod
 const context = (options = {}) => ({ env, request: new Request('https://example.test/api/dashboard', { headers: { Authorization: `Bearer ${env.DASHBOARD_ACCESS_CODE}` } }), ...options })
 const reply = body => Response.json(body)
 const records = dashboardFixtures(instant).records
+
+test('EO 路由入口提供 onRequest，未配置时返回关闭状态 JSON', async () => {
+  const result = await onRequest({ request: new Request('https://example.test/api/dashboard'), env: {} })
+  assert.equal(result.status, 503)
+  assert.match(result.headers.get('Content-Type'), /application\/json/)
+  assert.equal((await result.json()).code, 'NOT_CONFIGURED')
+})
 function upstream(calls = []) {
   return async (url, options = {}) => {
     calls.push({ url: String(url), ...options })
