@@ -2,12 +2,61 @@
 const props = defineProps<{ open: boolean; labelledby: string }>()
 const emit = defineEmits<{ close: [] }>()
 const dialog = ref<HTMLDialogElement | null>(null)
-let previousOverflow: string | undefined
+let unlockScroll: (() => void) | undefined
 let notified = false
 function restoreScroll() {
-  if (previousOverflow !== undefined) {
-    document.body.style.overflow = previousOverflow
-    previousOverflow = undefined
+  unlockScroll?.()
+  unlockScroll = undefined
+}
+function lockScroll() {
+  if (unlockScroll) return
+  const { scrollX, scrollY } = window
+  const body = document.body, root = document.documentElement
+  const saved = ['position', 'top', 'left', 'width', 'overflow', 'padding-right'].map(name =>
+    [name, body.style.getPropertyValue(name), body.style.getPropertyPriority(name)] as const)
+  const rootOverflow = root.style.overflow
+  const scrollbar = window.innerWidth - root.clientWidth
+  if (scrollbar > 0) body.style.paddingRight = `${parseFloat(getComputedStyle(body).paddingRight) + scrollbar}px`
+  Object.assign(body.style, { position: 'fixed', top: `${-scrollY}px`, left: `${-scrollX}px`, width: '100%', overflow: 'hidden' })
+  root.style.overflow = 'hidden'
+  let touchY = 0
+  const canScroll = (target: EventTarget | null, delta: number, x: number, y: number) => {
+    if (!(target instanceof Element) || !dialog.value?.contains(target)) return false
+    // 原生 dialog 会把遮罩事件也定向到自身，需按坐标排除遮罩。
+    const box = dialog.value.getBoundingClientRect()
+    if (x < box.left || x > box.right || y < box.top || y > box.bottom) return false
+    for (let node: Element | null = target; node; node = node.parentElement) {
+      if (node instanceof HTMLElement && /auto|scroll/.test(getComputedStyle(node).overflowY)) {
+        if (delta < 0 && node.scrollTop > 0 || delta > 0 && node.scrollTop + node.clientHeight < node.scrollHeight - 1) return true
+      }
+      if (node === dialog.value) break
+    }
+    return false
+  }
+  const touchStart = (event: TouchEvent) => { touchY = event.touches[0]?.clientY ?? 0 }
+  const touchMove = (event: TouchEvent) => {
+    // 保留双指缩放；单指在遮罩或滚动边界时不得传递给背景。
+    if (event.touches.length !== 1) return
+    const y = event.touches[0]!.clientY, delta = touchY - y
+    touchY = y
+    if (!canScroll(event.target, delta, event.touches[0]!.clientX, y) && event.cancelable) event.preventDefault()
+  }
+  const wheel = (event: WheelEvent) => {
+    if (!event.ctrlKey && !canScroll(event.target, event.deltaY, event.clientX, event.clientY) && event.cancelable) event.preventDefault()
+  }
+  document.addEventListener('touchstart', touchStart, { passive: true })
+  document.addEventListener('touchmove', touchMove, { passive: false })
+  document.addEventListener('wheel', wheel, { passive: false })
+  unlockScroll = () => {
+    document.removeEventListener('touchstart', touchStart)
+    document.removeEventListener('touchmove', touchMove)
+    document.removeEventListener('wheel', wheel)
+    for (const [name, value, priority] of saved) {
+      if (value) body.style.setProperty(name, value, priority)
+      else body.style.removeProperty(name)
+    }
+    root.style.overflow = rootOverflow
+    window.scrollTo({ left: scrollX, top: scrollY, behavior: 'instant' })
   }
 }
 function closed() {
@@ -37,9 +86,8 @@ watch(() => props.open, async open => {
   if (!dialog.value) return
   if (open && !dialog.value.open) {
     notified = false
-    previousOverflow = document.body.style.overflow
-    dialog.value.showModal()
-    document.body.style.overflow = 'hidden'
+    lockScroll()
+    try { dialog.value.showModal() } catch (error) { restoreScroll(); throw error }
   } else if (!open && dialog.value.open) dismiss()
 }, { immediate: true, flush: 'post' })
 onBeforeUnmount(() => { notified = true; dialog.value?.close(); restoreScroll() })

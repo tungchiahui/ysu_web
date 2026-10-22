@@ -442,17 +442,18 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 
 /* 赛事来自 app/data/competitions.ts，独立于飞书任务和任务筛选。 */
 .dashboard-competitions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; margin-bottom: 24px; }
-.dashboard-competition { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 20px; }
+.dashboard-competition { --event-accent: var(--cyan); position: relative; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; padding: 20px 24px; border-color: rgba(57, 230, 244, .35); border-top: 3px solid var(--event-accent); background: linear-gradient(120deg, rgba(22, 122, 175, .17), transparent 70%), #091929; box-shadow: 0 8px 32px rgba(0, 0, 0, .22); }
+.dashboard-competition:nth-child(2n) { --event-accent: var(--gold); border-color: rgba(255, 179, 92, .3); border-top-color: var(--event-accent); background: linear-gradient(120deg, rgba(174, 102, 25, .12), transparent 70%), #091929; }
 .dashboard-competition-info { min-width: 0; flex: 1 1 180px; }
-.dashboard-competition h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; color: var(--ink); font-size: var(--dashboard-text); line-height: 1.5; }
+.dashboard-competition h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; color: var(--ink); font-size: calc(var(--dashboard-text) * 1.08); line-height: 1.5; }
 .dashboard-event-status { border: 1px solid var(--line); padding: 1px 6px; color: var(--green); font-size: calc(var(--dashboard-text) * .7); font-weight: 400; white-space: nowrap; }
 .dashboard-event-status.tentative, .dashboard-event-status.historical { color: var(--gold); border-color: rgba(255, 179, 92, .35); }
 .dashboard-competition time { display: block; margin-top: 5px; color: var(--muted); font-size: calc(var(--dashboard-text) * .8); }
-.dashboard-competition-remaining { display: flex; align-items: baseline; justify-content: flex-end; flex-wrap: wrap; gap: 5px 10px; flex: 0 1 auto; max-width: 100%; color: var(--cyan); font-family: var(--dashboard-mono); font-variant-numeric: tabular-nums; }
-.dashboard-competition-remaining strong { font-size: calc(var(--dashboard-text) * 1.6); line-height: 1.2; white-space: nowrap; }
-.dashboard-competition-remaining small { font-size: calc(var(--dashboard-text) * .8); }
-.dashboard-event-label { color: var(--muted); font-size: calc(var(--dashboard-text) * .75); }
-.dashboard-event-clock { font-size: var(--dashboard-text); letter-spacing: .04em; }
+.dashboard-competition-remaining { display: grid; grid-template-columns: auto auto; align-items: baseline; justify-content: end; gap: 2px 14px; flex: 0 1 auto; max-width: 100%; color: var(--event-accent); font-family: var(--dashboard-mono); font-variant-numeric: tabular-nums; }
+.dashboard-competition-remaining strong { font-size: clamp(2.4rem, 3vw, 3.8rem); font-weight: 800; line-height: 1.1; letter-spacing: -.04em; white-space: nowrap; }
+.dashboard-competition-remaining small { font-size: calc(var(--dashboard-text) * .9); font-weight: 500; letter-spacing: 0; }
+.dashboard-event-label { grid-column: 1 / -1; color: var(--ink-soft); font-size: calc(var(--dashboard-text) * .75); }
+.dashboard-event-clock { font-size: calc(var(--dashboard-text) * 1.2); letter-spacing: .04em; }
 .dashboard-competition-remaining .dashboard-event-message { font-size: calc(var(--dashboard-text) * 1.1); color: #a8d9ff; }
 .dashboard-competition.is-reached .dashboard-event-message { color: var(--green); }
 .dashboard-competition-heading { display: flex; align-items: center; gap: 10px; min-width: 0; }
@@ -473,7 +474,7 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 .dashboard-stats .dashboard-deadline-details span { min-width: 0; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; letter-spacing: 0; color: var(--cyan); font-size: inherit; font-weight: 400; }
 .dashboard-deadline-empty { margin: 0; color: var(--muted); font-size: calc(var(--dashboard-text) * .8); }
 @media (min-width: 1200px) and (min-height: 700px) { .is-fixed-screen .dashboard-competitions { flex: 0 0 auto; margin-bottom: 16px; } }
-@media (max-width: 760px) { .dashboard-competitions { grid-template-columns: 1fr; gap: 10px; } .dashboard-competition { flex-wrap: wrap; gap: 10px; padding: 14px 16px; } .dashboard-competition-remaining { justify-content: flex-start; } .dashboard-competition-logo { height: 20px; } }
+@media (max-width: 760px) { .dashboard-competitions { grid-template-columns: 1fr; gap: 12px; } .dashboard-competition { flex-wrap: wrap; gap: 16px; padding: 18px; } .dashboard-competition-remaining { width: 100%; padding-top: 12px; border-top: 1px solid var(--line); grid-template-columns: 1fr auto; justify-content: stretch; } .dashboard-competition-logo { height: 24px; } }
 
 /* 任务可展开；详情与统计在原生对话框中呈现，不占固定大屏的任务空间。 */
 .dashboard-page .dashboard-task-title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; width: 100%; border: 0; padding: 0; border-radius: 3px; background: transparent; color: inherit; text-align: left; font: inherit; font-weight: inherit; line-height: inherit; overflow-wrap: anywhere; }
@@ -520,3 +521,22 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 .dashboard-completion-unavailable { padding: 24px 0; color: var(--muted); line-height: 1.85; }
 .dashboard-completion-unavailable h3 { color: var(--ink); font-size: 1.15rem; }
 @media (max-width: 480px) { .dashboard-dialog { padding: 22px 16px; } .dashboard-dialog-heading .eyebrow { font-size: .6rem; } .dashboard-completion-chart ol { gap: 5px; } .dashboard-completion-metrics { gap: 6px; } .dashboard-completion-metrics > div { padding: 10px 6px; } .dashboard-completion-metrics dd { font-size: 1.5rem; } }
+
+/* 手机以底部面板保留页面上下文，桌面继续使用右侧抽屉。 */
+@media (max-width: 760px) {
+  .dashboard-dialog { inset: auto 8px max(8px, env(safe-area-inset-bottom)) 8px; width: calc(100% - 16px); height: auto; max-height: 84dvh; margin: 0; padding: 20px 20px 24px; border-radius: 24px; border-color: rgba(86, 174, 208, .3); background: #091b2b; box-shadow: 0 -12px 60px rgba(0, 0, 0, .4); scroll-padding-top: 78px; -webkit-overflow-scrolling: touch; }
+  .dashboard-dialog[open] { animation: dashboard-sheet-in 180ms ease-out; }
+  .dashboard-dialog::backdrop { background: rgba(0, 7, 15, .62); backdrop-filter: blur(3px); }
+  .dashboard-dialog-heading { top: -20px; margin: -20px -20px 18px; padding: 18px 20px 12px; background: #091b2b; }
+  .dashboard-dialog-heading .eyebrow { color: var(--cyan); font-size: .65rem; letter-spacing: .08em; }
+  .dashboard-dialog-heading button { min-height: 44px; padding: 8px 12px; border-radius: 12px; background: rgba(57, 230, 244, .05); font-size: .85rem; }
+  .dashboard-dialog h2 { margin-bottom: 14px; font-size: 1.3rem; line-height: 1.5; }
+  .dashboard-detail-fields { display: grid; gap: 10px; margin: 20px 0; }
+  .dashboard-detail-fields > div { padding: 12px 14px; border: 1px solid rgba(68, 156, 195, .15); border-radius: 12px; background: rgba(57, 230, 244, .025); }
+  .dashboard-detail-fields dt { margin-bottom: 6px; font-size: .75rem; }
+  .dashboard-detail-fields dd { font-size: .9rem; line-height: 1.65; }
+  .dashboard-detail-note { padding: 16px 14px; border-radius: 12px; background: rgba(57, 230, 244, .035); }
+  .dashboard-detail-note p { font-size: .9rem; }
+  .dashboard-completion-metrics > div { border-radius: 12px; }
+}
+@keyframes dashboard-sheet-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
