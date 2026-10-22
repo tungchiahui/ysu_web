@@ -271,13 +271,32 @@ onBeforeUnmount(() => {
         <div><span>待办任务</span><strong>{{ counts.todo + counts.overdue }}</strong></div>
         <div class="dashboard-overdue"><span>已逾期</span><strong>{{ counts.overdue }}</strong></div>
         <div><span>已完成</span><strong>{{ counts.done }}</strong></div>
-        <div class="dashboard-countdown"><span>距离最近截止</span><strong>{{ countdown }}</strong><small v-if="nextDeadline">{{ nextDeadline.title }}</small></div>
+        <div class="dashboard-countdown">
+          <div class="dashboard-deadline-heading"><span>距离最近截止</span><span v-if="nextDeadline" class="dashboard-deadline-priority" :class="nextDeadline.priority">{{ priorityLabels[nextDeadline.priority] }}</span></div>
+          <strong>{{ countdown }}</strong>
+          <template v-if="nextDeadline">
+            <p class="dashboard-deadline-title" :title="nextDeadline.title">{{ nextDeadline.title }}</p>
+            <div class="dashboard-deadline-people">
+              <span class="dashboard-deadline-label">执行人</span>
+              <DashboardMember v-for="person in nextDeadline.assignees" :key="person.key" :person="person" :profile="memberProfile(person.name)" />
+              <span v-if="!nextDeadline.assignees.length">待分配</span>
+            </div>
+            <div class="dashboard-deadline-details">
+              <time :datetime="new Date(nextDeadline.deadline!).toISOString()">截止 {{ formatTime(nextDeadline.deadline) }}</time>
+              <span v-if="nextDeadline.group" :title="nextDeadline.group">{{ nextDeadline.group }}</span>
+            </div>
+          </template>
+          <p v-else class="dashboard-deadline-empty">当前筛选下没有尚未到期的任务</p>
+        </div>
       </section>
 
       <section v-if="eventCountdowns.length" class="dashboard-competitions" aria-label="赛事倒计时">
         <article v-for="event in eventCountdowns" :key="event.name" class="dashboard-panel dashboard-competition" :class="{ 'is-reached': event.state === 'reached' }">
           <div class="dashboard-competition-info">
-            <h2>{{ event.name }}<span v-if="event.dateStatus !== 'pending'" class="dashboard-event-status" :class="event.dateStatus">{{ event.dateStatus === 'historical' ? `去年同期参考（${event.referenceYear}）` : event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span></h2>
+            <div class="dashboard-competition-heading">
+              <img class="dashboard-competition-logo" src="/images/competitions/robomaster.png" alt="RoboMaster" width="1021" height="663">
+              <h2>{{ event.name }}<span v-if="event.dateStatus !== 'pending'" class="dashboard-event-status" :class="event.dateStatus">{{ event.dateStatus === 'historical' ? `去年同期参考（${event.referenceYear}）` : event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span></h2>
+            </div>
             <time v-if="event.target !== null" :datetime="event.startsAt || undefined">{{ formatEventTime(event.target) }} · 北京时间{{ event.dateStatus === 'historical' ? ' · 同期推算' : '' }}</time>
           </div>
           <div class="dashboard-competition-remaining">
