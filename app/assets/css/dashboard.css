@@ -439,3 +439,21 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
   .dashboard-header-controls .dashboard-clock { text-align: center; margin-bottom: 10px; }
   .dashboard-header-controls .dashboard-actions { justify-content: center; }
 }
+
+/* 赛事来自 app/data/competitions.ts，独立于飞书任务和任务筛选。 */
+.dashboard-competitions { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 14px; margin-bottom: 24px; }
+.dashboard-competition { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 20px; }
+.dashboard-competition-info { min-width: 0; flex: 1 1 180px; }
+.dashboard-competition h2 { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 0; color: var(--ink); font-size: var(--dashboard-text); line-height: 1.5; }
+.dashboard-event-status { border: 1px solid var(--line); padding: 1px 6px; color: var(--green); font-size: calc(var(--dashboard-text) * .7); font-weight: 400; white-space: nowrap; }
+.dashboard-event-status.tentative { color: var(--gold); border-color: rgba(255, 179, 92, .35); }
+.dashboard-competition time { display: block; margin-top: 5px; color: var(--muted); font-size: calc(var(--dashboard-text) * .8); }
+.dashboard-competition-remaining { display: flex; align-items: baseline; justify-content: flex-end; flex-wrap: wrap; gap: 5px 10px; flex: 0 1 auto; max-width: 100%; color: var(--cyan); font-family: var(--dashboard-mono); font-variant-numeric: tabular-nums; }
+.dashboard-competition-remaining strong { font-size: calc(var(--dashboard-text) * 1.6); line-height: 1.2; white-space: nowrap; }
+.dashboard-competition-remaining small { font-size: calc(var(--dashboard-text) * .8); }
+.dashboard-event-label { color: var(--muted); font-size: calc(var(--dashboard-text) * .75); }
+.dashboard-event-clock { font-size: var(--dashboard-text); letter-spacing: .04em; }
+.dashboard-competition-remaining .dashboard-event-message { font-size: calc(var(--dashboard-text) * 1.1); color: #a8d9ff; }
+.dashboard-competition.is-reached .dashboard-event-message { color: var(--green); }
+@media (min-width: 1200px) and (min-height: 700px) { .is-screen .dashboard-competitions { flex: 0 0 auto; margin-bottom: 16px; } }
+@media (max-width: 760px) { .dashboard-competitions { grid-template-columns: 1fr; gap: 10px; } .dashboard-competition { flex-wrap: wrap; gap: 10px; padding: 14px 16px; } .dashboard-competition-remaining { justify-content: flex-start; } }

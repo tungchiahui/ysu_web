@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { site } from '~/data/site'
+import { competitions } from '~/data/competitions'
+import { prepareCompetitions, competitionTimeLeft } from '~/utils/competitions'
 import { dashboardGridLayout, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
 
 useHead({ title: `任务看板 | ${site.shortName}`, meta: [{ name: 'robots', content: 'noindex, nofollow' }], bodyAttrs: { class: 'dashboard-tech' } })
@@ -34,6 +36,12 @@ let clockTimer: ReturnType<typeof setInterval> | undefined
 let lastRotation = 0
 let disposed = false
 let generation = 0
+
+const competitionSchedule = prepareCompetitions(competitions).filter(event => event.enabled)
+const eventCountdowns = computed(() => competitionSchedule.map(event => ({ ...event, ...competitionTimeLeft(event.target, currentTime.value) })))
+const formatEventTime = (value: number) => new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
+}).format(value)
 
 const tasks = computed(() => data.value?.tasks || [])
 const groups = computed(() => [...new Set<string>(tasks.value.flatMap(dashboardTaskGroups))].sort((a, b) => a.localeCompare(b, 'zh-CN')))
@@ -264,6 +272,19 @@ onBeforeUnmount(() => {
         <div class="dashboard-overdue"><span>已逾期</span><strong>{{ counts.overdue }}</strong></div>
         <div><span>已完成</span><strong>{{ counts.done }}</strong></div>
         <div class="dashboard-countdown"><span>距离最近截止</span><strong>{{ countdown }}</strong><small v-if="nextDeadline">{{ nextDeadline.title }}</small></div>
+      </section>
+
+      <section v-if="eventCountdowns.length" class="dashboard-competitions" aria-label="赛事倒计时">
+        <article v-for="event in eventCountdowns" :key="event.name" class="dashboard-panel dashboard-competition" :class="{ 'is-reached': event.state === 'reached' }">
+          <div class="dashboard-competition-info">
+            <h2>{{ event.name }}<span v-if="event.dateStatus !== 'pending'" class="dashboard-event-status" :class="event.dateStatus">{{ event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span></h2>
+            <time v-if="event.target !== null" :datetime="event.startsAt || undefined">{{ formatEventTime(event.target) }} · 北京时间</time>
+          </div>
+          <div class="dashboard-competition-remaining">
+            <template v-if="event.state === 'counting'"><span class="dashboard-event-label">距离赛事</span><strong>{{ event.days }}<small> 天</small></strong><span class="dashboard-event-clock">{{ event.clock }}</span></template>
+            <strong v-else class="dashboard-event-message">{{ event.state === 'pending' ? '日期待定' : event.state === 'waiting' ? '正在校时…' : '已到达节点' }}</strong>
+          </div>
+        </article>
       </section>
 
       <div class="dashboard-grid">
