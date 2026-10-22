@@ -166,7 +166,8 @@ const resizeScreen = () => {
   if (!taskList.value) return
   const box = taskList.value.getBoundingClientRect()
   // 只有固定桌面大屏按高度分页；手机、平板和普通模式完整展示筛选结果，直接向下滚动。
-  layout.value = dashboardGridLayout(box.width, paginated.value ? box.height : 220, paginated.value ? 10 : 14)
+  const fontSize = Number.parseFloat(getComputedStyle(taskList.value).fontSize) || 16
+  layout.value = dashboardGridLayout(box.width, paginated.value ? box.height : 260, paginated.value ? 10 : 14, fontSize)
 }
 watch(taskList, (element, previous) => {
   if (previous) layoutObserver?.unobserve(previous)

@@ -224,9 +224,10 @@ test('可选GitHub读取公开仓库，独立缓存并隔离GitHub故障', async
 
 test('面板容量随真实可用宽高增长，窄屏至少保留一列一行', () => {
   assert.deepEqual(dashboardGridLayout(330, 210), { columns: 1, rows: 1, size: 1 })
-  assert.deepEqual(dashboardGridLayout(1060, 680), { columns: 3, rows: 3, size: 9 })
-  assert.deepEqual(dashboardGridLayout(2470, 1370), { columns: 7, rows: 6, size: 42 })
-  assert.equal(dashboardGridLayout(1060, 910).size, 12)
+  assert.deepEqual(dashboardGridLayout(1060, 680), { columns: 2, rows: 2, size: 4 })
+  assert.deepEqual(dashboardGridLayout(2470, 1370), { columns: 6, rows: 5, size: 30 })
+  assert.equal(dashboardGridLayout(1060, 910).size, 6)
+  assert.equal(dashboardGridLayout(1060, 910, 10, 20).size, 4)
   assert.equal(dashboardGridLayout(0, 0).size, 1)
 })
 
