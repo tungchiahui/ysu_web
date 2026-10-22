@@ -221,13 +221,19 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <section v-if="phase === 'locked'" class="dashboard-gate dashboard-access" aria-labelledby="dashboard-unlock-title">
+    <section v-if="phase === 'locked'" class="dashboard-gate dashboard-access" :class="{ 'is-verifying': loading }" :aria-busy="loading" aria-labelledby="dashboard-unlock-title">
       <div class="dashboard-gate-visual" aria-hidden="true"><div class="dashboard-radar"><span /><i /></div><span class="dashboard-gate-signal">YSU / MISSION CONTROL</span></div>
       <div class="dashboard-gate-content">
         <p class="eyebrow">Team Access / 队内入口</p><h2 id="dashboard-unlock-title">每一份进展<br>都在这里汇聚</h2><p>输入访问口令，查看团队任务进展。</p>
-        <form @submit.prevent="unlock"><label for="dashboard-code">访问口令</label><div class="dashboard-code-row"><input id="dashboard-code" v-model="accessCode" type="password" required maxlength="1000" autocomplete="current-password" placeholder="输入队内访问口令"><button type="submit" :disabled="loading">{{ loading ? '验证中…' : '进入看板 →' }}</button></div></form>
+        <form @submit.prevent="unlock"><label for="dashboard-code">访问口令</label><div class="dashboard-code-row"><input id="dashboard-code" v-model="accessCode" :disabled="loading" type="password" required maxlength="1000" autocomplete="current-password" placeholder="输入队内访问口令"><button type="submit" :disabled="loading">{{ loading ? '验证中…' : '进入看板 →' }}</button></div></form>
         <p v-if="message" role="alert" class="dashboard-warning">{{ message }}</p>
         <p class="dashboard-access-hint"><i aria-hidden="true" />仅本次页面有效 · 离开后重新验证</p>
+      </div>
+      <div v-if="loading" class="dashboard-unlocking" role="status" aria-live="polite">
+        <span class="dashboard-loading-orbit" aria-hidden="true"><i /><b>YSU</b></span>
+        <strong>正在进入任务看板</strong>
+        <p>正在验证口令并同步任务…</p>
+        <span class="dashboard-loading-track" aria-hidden="true"><i /></span>
       </div>
     </section>
     <section v-else-if="!data" class="dashboard-gate" aria-live="polite">
