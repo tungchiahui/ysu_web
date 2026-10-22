@@ -415,7 +415,7 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 .dashboard-loading-orbit { position: relative; display: grid; place-items: center; width: 88px; height: 88px; margin-bottom: 12px; border: 1px solid rgba(57, 230, 244, .2); border-radius: 50%; box-shadow: 0 0 35px rgba(57, 230, 244, .12); }
 .dashboard-loading-orbit::before { position: absolute; inset: -10px; border: 1px dashed rgba(57, 230, 244, .2); border-radius: 50%; content: ''; }
 .dashboard-loading-orbit i { position: absolute; inset: -2px; border: 3px solid transparent; border-top-color: var(--cyan); border-right-color: rgba(57, 230, 244, .25); border-radius: 50%; animation: dashboard-sweep 1.2s linear infinite; }
-.dashboard-loading-orbit b { color: var(--cyan); font: 500 1rem var(--dashboard-mono); letter-spacing: .1em; }
+.dashboard-loading-orbit img { display: block; width: 68px; height: 68px; border-radius: 50%; object-fit: contain; }
 .dashboard-loading-track { display: block; width: min(280px, 80%); height: 3px; margin-top: 8px; overflow: hidden; background: rgba(57, 230, 244, .12); }
 .dashboard-loading-track i { display: block; width: 35%; height: 100%; background: linear-gradient(90deg, transparent, var(--cyan)); animation: dashboard-loading-track 1.6s ease-in-out infinite; }
 .dashboard-stats, .dashboard-grid, .dashboard-development { animation: dashboard-reveal 320ms ease-out; }

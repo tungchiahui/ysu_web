@@ -239,7 +239,7 @@ onBeforeUnmount(() => {
         <p class="dashboard-access-hint"><i aria-hidden="true" />仅本次页面有效 · 离开后重新验证</p>
       </div>
       <div v-if="loading" class="dashboard-unlocking" role="status" aria-live="polite">
-        <span class="dashboard-loading-orbit" aria-hidden="true"><i /><b>YSU</b></span>
+        <span class="dashboard-loading-orbit" aria-hidden="true"><i /><img :src="site.logo" alt="" width="68" height="68"></span>
         <strong>正在进入任务看板</strong>
         <p>正在验证口令并同步任务…</p>
         <span class="dashboard-loading-track" aria-hidden="true"><i /></span>
