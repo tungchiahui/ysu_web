@@ -3,10 +3,17 @@ import { site } from '~/data/site'
 import { competitions } from '~/data/competitions'
 import { prepareCompetitions, competitionTimeLeft } from '~/utils/competitions'
 import { dashboardGridLayout, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
+import { dashboardUrgency, dashboardNextDeadlines, DASHBOARD_PREFERENCES_KEY, dashboardPreferences, readDashboardPreferences } from '../../../utils/dashboard-experience.mjs'
 
 useHead({ title: `任务看板 | ${site.shortName}`, meta: [{ name: 'robots', content: 'noindex, nofollow' }], bodyAttrs: { class: 'dashboard-tech' } })
 const route = useRoute()
+const router = useRouter()
 const screen = ref(false)
+const fullscreen = ref(false)
+const displayMessage = ref('')
+const selectedTaskId = ref<string | null>(null)
+const showCompletion = ref(false)
+const nextDeadlineIndex = ref(0)
 const viewportFitsScreen = ref(false)
 const paginated = computed(() => screen.value && viewportFitsScreen.value)
 const data = shallowRef<DashboardData | null>(null)
@@ -21,6 +28,7 @@ const currentTime = ref(0)
 const pageIndex = ref(0)
 const autoRotate = ref(true)
 const taskList = ref<HTMLElement | null>(null)
+const dashboardPage = ref<HTMLElement | null>(null)
 const layout = ref({ columns: 1, rows: 2, size: 2 })
 const { data: members } = await useAsyncData('dashboard:members', () => queryCollection('members').select('name', 'image').all())
 const memberNames = computed(() => (members.value || []).map(member => member.name))
@@ -34,6 +42,9 @@ let request: AbortController | undefined
 let pollTimer: ReturnType<typeof setTimeout> | undefined
 let clockTimer: ReturnType<typeof setInterval> | undefined
 let lastRotation = 0
+let lastDeadlineRotation = 0
+let preferencesLoaded = false
+let ownsFullscreen = false
 let disposed = false
 let generation = 0
 
@@ -65,8 +76,11 @@ const pageTasks = computed(() => paginated.value ? visibleTasks.value.slice(page
 const rankedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value }))
 const todoRanks = computed(() => dashboardRanks(rankedTasks.value, 'todo'))
 const doneRanks = computed(() => dashboardRanks(rankedTasks.value, 'done'))
-const nextDeadline = computed(() => scopedTasks.value.filter(task => task.status !== 'done' && task.deadline !== null && task.deadline > currentTime.value)
-  .sort((a, b) => a.deadline! - b.deadline!)[0])
+const nextDeadlines = computed<DashboardTask[]>(() => dashboardNextDeadlines(scopedTasks.value, currentTime.value))
+const nextDeadline = computed(() => nextDeadlines.value[nextDeadlineIndex.value] || nextDeadlines.value[0])
+const activeTask = computed(() => tasks.value.find(task => task.id === selectedTaskId.value))
+const overlayOpen = computed(() => Boolean(activeTask.value || showCompletion.value))
+const completionScope = computed(() => `${selectedGroup.value === 'all' ? '全部组别' : selectedGroup.value}${search.value.trim() ? ' · 当前关键词筛选' : ''}`)
 const countdown = computed(() => {
   if (!nextDeadline.value?.deadline) return '暂无待到期任务'
   const seconds = Math.max(0, Math.floor((nextDeadline.value.deadline - currentTime.value) / 1000))
@@ -89,10 +103,22 @@ const clock = computed(() => currentTime.value ? new Intl.DateTimeFormat('zh-CN'
 
 watch([selectedStatus, selectedGroup, search, pageSize, paginated], () => { pageIndex.value = 0; lastRotation = currentTime.value })
 watch(pages, value => { pageIndex.value = Math.min(pageIndex.value, value - 1) })
+watch(() => nextDeadlines.value.map(task => task.id).join('\n'), () => { nextDeadlineIndex.value = 0; lastDeadlineRotation = currentTime.value })
+watch(activeTask, task => { if (!task) selectedTaskId.value = null })
+watch(data, value => { if (!value) { selectedTaskId.value = null; showCompletion.value = false } })
+watch([selectedGroup, selectedStatus, screen, autoRotate], () => {
+  if (!import.meta.client || !preferencesLoaded) return
+  try {
+    localStorage.setItem(DASHBOARD_PREFERENCES_KEY, JSON.stringify(dashboardPreferences({
+      version: 1, group: selectedGroup.value, status: selectedStatus.value, screen: screen.value, autoRotate: autoRotate.value
+    })))
+  } catch { displayMessage.value = '浏览器未允许保存显示偏好，设置仅本次有效。' }
+}, { flush: 'post' })
 // 静态页首次水合会暂时恢复预渲染地址；路由就绪后同步最终的查询参数。
 watch(() => route.query.screen, () => {
   if (!import.meta.client) return
-  screen.value = new URLSearchParams(window.location.search).get('screen') === '1'
+  const explicit = new URLSearchParams(window.location.search).get('screen')
+  if (explicit !== null) screen.value = explicit === '1'
   document.body.classList.toggle('dashboard-screen', screen.value)
 }, { flush: 'post' })
 
@@ -162,20 +188,75 @@ function lock() {
   loading.value = false
   authorization = ''
   data.value = null
+  selectedTaskId.value = null
+  showCompletion.value = false
   message.value = ''
   phase.value = 'locked'
   clearTimeout(pollTimer)
 }
 
-function toggleScreen() {
-  screen.value = !screen.value
+function setScreen(value: boolean) {
+  screen.value = value
   document.body.classList.toggle('dashboard-screen', screen.value)
   lastRotation = currentTime.value
+  if (new URLSearchParams(window.location.search).has('screen')) void router.replace({ query: { ...route.query, screen: value ? '1' : '0' } })
+}
+const toggleScreen = () => setScreen(!screen.value)
+function openTask(id: string) { showCompletion.value = false; selectedTaskId.value = id }
+function openCard(event: MouseEvent, id: string) {
+  if (!(event.target instanceof Element) || event.target.closest('a, button, input, select')) return
+  openTask(id)
+}
+function rotateDeadline(direction: number) {
+  nextDeadlineIndex.value = (nextDeadlineIndex.value + direction + nextDeadlines.value.length) % nextDeadlines.value.length
+  lastDeadlineRotation = currentTime.value
+}
+async function toggleFullscreen() {
+  displayMessage.value = ''
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen()
+    else {
+      setScreen(true)
+      if (!document.documentElement.requestFullscreen || !document.fullscreenEnabled) throw new Error('UNAVAILABLE')
+      await document.documentElement.requestFullscreen()
+      ownsFullscreen = true
+    }
+  } catch { displayMessage.value = '浏览器未能切换全屏，可继续使用大屏模式。' }
+}
+const syncFullscreen = () => {
+  fullscreen.value = Boolean(document.fullscreenElement)
+  if (!fullscreen.value) ownsFullscreen = false
+  void nextTick(resizeScreen)
+}
+function escapeFullscreen(event: KeyboardEvent) {
+  if (event.key === 'Escape' && !overlayOpen.value && ownsFullscreen && document.fullscreenElement) {
+    event.preventDefault()
+    void document.exitFullscreen().catch(() => { displayMessage.value = '暂时无法退出全屏，请使用浏览器的退出全屏操作。' })
+  }
+}
+function resetDisplay() {
+  search.value = ''
+  selectedGroup.value = 'all'
+  selectedStatus.value = 'todo'
+  autoRotate.value = true
+  setScreen(false)
+  displayMessage.value = '已恢复默认显示设置。'
 }
 
 const resumeRefresh = () => { if (!document.hidden && !['locked', 'closed'].includes(phase.value)) void refresh() }
 const resizeScreen = () => {
-  viewportFitsScreen.value = window.matchMedia('(min-width: 1200px) and (min-height: 700px)').matches
+  const candidate = screen.value && window.matchMedia('(min-width: 1200px) and (min-height: 700px)').matches
+  // 先按固定大屏样式实测，避免普通模式较大的间距误判为没有空间。
+  dashboardPage.value?.classList.toggle('is-fixed-screen', candidate)
+  const occupied = [...(dashboardPage.value?.children || [])].filter(element =>
+    element.matches('.dashboard-heading, .dashboard-notice, .dashboard-filters, .dashboard-stats, .dashboard-competitions, .dashboard-development'))
+    .reduce((total, element) => {
+      const style = getComputedStyle(element)
+      return total + element.getBoundingClientRect().height + (Number.parseFloat(style.marginTop) || 0) + (Number.parseFloat(style.marginBottom) || 0)
+    }, 0)
+  // 短屏或顶部内容较多时保留连续滚动，避免任务面板被压成零高度。
+  viewportFitsScreen.value = candidate && window.innerHeight - 32 - occupied >= 260
+  dashboardPage.value?.classList.toggle('is-fixed-screen', paginated.value)
   if (!taskList.value) return
   const box = taskList.value.getBoundingClientRect()
   // 只有固定桌面大屏按高度分页；手机、平板和普通模式完整展示筛选结果，直接向下滚动。
@@ -188,23 +269,35 @@ watch(taskList, (element, previous) => {
   void nextTick(resizeScreen)
 }, { flush: 'post' })
 watch(screen, () => { void nextTick(resizeScreen) })
+watch([data, selectedGroup, search, nextDeadline], () => { void nextTick(resizeScreen) }, { flush: 'post' })
 onMounted(() => {
   currentTime.value = Date.now()
   lastRotation = currentTime.value
-  screen.value = new URLSearchParams(window.location.search).get('screen') === '1'
+  let saved = readDashboardPreferences(null)
+  try { saved = readDashboardPreferences(localStorage.getItem(DASHBOARD_PREFERENCES_KEY)) } catch { /* 显示仍可正常使用。 */ }
+  selectedGroup.value = saved.group
+  selectedStatus.value = saved.status
+  autoRotate.value = saved.autoRotate
+  const explicit = new URLSearchParams(window.location.search).get('screen')
+  screen.value = explicit === null ? saved.screen : explicit === '1'
+  preferencesLoaded = true
   layoutObserver = new ResizeObserver(resizeScreen)
   if (taskList.value) layoutObserver.observe(taskList.value)
   resizeScreen()
   document.body.classList.toggle('dashboard-screen', screen.value)
   clockTimer = setInterval(() => {
     currentTime.value = Date.now()
-    if (paginated.value && autoRotate.value && !document.hidden && pages.value > 1 && currentTime.value - lastRotation >= 15_000) {
+    if (paginated.value && autoRotate.value && !overlayOpen.value && !document.hidden && pages.value > 1 && currentTime.value - lastRotation >= 15_000) {
       pageIndex.value = (pageIndex.value + 1) % pages.value
       lastRotation = currentTime.value
     }
+    if (screen.value && autoRotate.value && !overlayOpen.value && !document.hidden && nextDeadlines.value.length > 1 && currentTime.value - lastDeadlineRotation >= 10_000) rotateDeadline(1)
   }, 1000)
   document.addEventListener('visibilitychange', resumeRefresh)
   window.addEventListener('resize', resizeScreen)
+  document.addEventListener('fullscreenchange', syncFullscreen)
+  document.addEventListener('keydown', escapeFullscreen)
+  syncFullscreen()
   void refresh()
 })
 onBeforeUnmount(() => {
@@ -215,12 +308,15 @@ onBeforeUnmount(() => {
   clearInterval(clockTimer)
   document.removeEventListener('visibilitychange', resumeRefresh)
   window.removeEventListener('resize', resizeScreen)
+  document.removeEventListener('fullscreenchange', syncFullscreen)
+  document.removeEventListener('keydown', escapeFullscreen)
+  if (ownsFullscreen && document.fullscreenElement) void document.exitFullscreen().catch(() => {})
   document.body.classList.remove('dashboard-screen')
 })
 </script>
 
 <template>
-  <main class="dashboard-page" :class="{ 'is-screen': screen, 'is-gated': !data }">
+  <main ref="dashboardPage" class="dashboard-page" :class="{ 'is-screen': screen, 'is-fixed-screen': paginated, 'is-gated': !data }">
     <header class="dashboard-heading">
       <NuxtLink class="dashboard-identity" to="/" :aria-label="`${site.university}${site.shortName}，返回首页`">
         <span class="dashboard-insignia"><img :src="site.logo" :alt="site.logoAlt" width="96" height="96"></span>
@@ -233,10 +329,12 @@ onBeforeUnmount(() => {
         <span class="dashboard-connection" :class="{ 'is-online': phase === 'ready' && !updateInterrupted }"><i aria-hidden="true" />{{ loading ? '正在同步' : phase === 'ready' ? updateInterrupted ? '等待更新' : '数据已同步' : phase === 'locked' ? '等待解锁' : '暂未连接' }}</span>
         <button type="button" :disabled="loading" @click="refresh">{{ loading ? '更新中…' : '刷新' }}</button>
         <button type="button" :aria-pressed="screen" @click="toggleScreen">{{ screen ? '退出大屏' : '大屏模式' }}</button>
+        <button type="button" :aria-pressed="fullscreen" @click="toggleFullscreen">{{ fullscreen ? '退出全屏' : '浏览器全屏' }}</button>
         <button v-if="data && authorization" type="button" @click="lock">锁定</button>
         </div>
       </div>
     </header>
+    <p v-if="displayMessage" class="dashboard-notice" role="status">{{ displayMessage }}</p>
 
     <section v-if="phase === 'locked'" class="dashboard-gate dashboard-access" :class="{ 'is-verifying': loading }" :aria-busy="loading" aria-labelledby="dashboard-unlock-title">
       <div class="dashboard-gate-visual" aria-hidden="true"><div class="dashboard-radar"><span /><i /></div><span class="dashboard-gate-signal">YSU / MISSION CONTROL</span></div>
@@ -265,17 +363,17 @@ onBeforeUnmount(() => {
       <p v-if="updateInterrupted" role="status" class="dashboard-notice dashboard-warning">{{ message || '更新暂时中断，正在显示上次结果。' }} 上次更新 {{ formatTime(data.updatedAt) }}</p>
       <div class="dashboard-filters">
         <div class="dashboard-query"><label for="task-search" class="visually-hidden">搜索任务</label><input id="task-search" v-model="search" type="search" placeholder="搜索任务、执行人或备注"><label for="task-group" class="visually-hidden">组别</label><select id="task-group" v-model="selectedGroup"><option value="all">全部组别</option><option v-for="group in groups" :key="group" :value="group">{{ group }}</option></select></div>
-        <p class="dashboard-update"><span :class="{ interrupted: updateInterrupted }" />{{ updateInterrupted ? '等待更新' : '自动更新中' }} · {{ formatTime(data.updatedAt) }}</p>
+        <p class="dashboard-update"><span :class="{ interrupted: updateInterrupted }" />{{ updateInterrupted ? '等待更新' : '自动更新中' }} · {{ formatTime(data.updatedAt) }} <button type="button" class="dashboard-text-button" @click="resetDisplay">重置显示</button></p>
       </div>
       <section class="dashboard-stats" aria-label="任务概览">
         <div><span>待办任务</span><strong>{{ counts.todo + counts.overdue }}</strong></div>
         <div class="dashboard-overdue"><span>已逾期</span><strong>{{ counts.overdue }}</strong></div>
-        <div><span>已完成</span><strong>{{ counts.done }}</strong></div>
+        <div><span>已完成</span><strong>{{ counts.done }}</strong><button type="button" class="dashboard-text-button dashboard-trend-trigger" aria-label="查看完成趋势" @click="selectedTaskId = null; showCompletion = true">完成趋势 →</button></div>
         <div class="dashboard-countdown">
-          <div class="dashboard-deadline-heading"><span>距离最近截止</span><span v-if="nextDeadline" class="dashboard-deadline-priority" :class="nextDeadline.priority">{{ priorityLabels[nextDeadline.priority] }}</span></div>
+          <div class="dashboard-deadline-heading"><span>距离最近截止</span><div v-if="nextDeadline" class="dashboard-task-flags"><span v-if="dashboardUrgency(nextDeadline, currentTime)" class="dashboard-urgency" :class="dashboardUrgency(nextDeadline, currentTime)!.level">{{ dashboardUrgency(nextDeadline, currentTime)!.label }}</span><span class="dashboard-deadline-priority" :class="nextDeadline.priority">{{ priorityLabels[nextDeadline.priority] }}</span></div></div>
           <strong>{{ countdown }}</strong>
           <template v-if="nextDeadline">
-            <p class="dashboard-deadline-title" :title="nextDeadline.title">{{ nextDeadline.title }}</p>
+            <p class="dashboard-deadline-title"><button type="button" class="dashboard-task-title" :aria-label="`查看任务详情：${nextDeadline.title}`" @click="openTask(nextDeadline.id)">{{ nextDeadline.title }}</button></p>
             <div class="dashboard-deadline-people">
               <span class="dashboard-deadline-label">执行人</span>
               <DashboardMember v-for="person in nextDeadline.assignees" :key="person.key" :person="person" :profile="memberProfile(person.name)" />
@@ -285,6 +383,7 @@ onBeforeUnmount(() => {
               <time :datetime="new Date(nextDeadline.deadline!).toISOString()">截止 {{ formatTime(nextDeadline.deadline) }}</time>
               <span v-if="nextDeadline.group" :title="nextDeadline.group">{{ nextDeadline.group }}</span>
             </div>
+            <div v-if="nextDeadlines.length > 1" class="dashboard-deadline-switch"><span>同时截止共 {{ nextDeadlines.length }} 项 · {{ nextDeadlineIndex + 1 }}/{{ nextDeadlines.length }}</span><div><button type="button" aria-label="上一项最近任务" @click="rotateDeadline(-1)">‹</button><button type="button" aria-label="下一项最近任务" @click="rotateDeadline(1)">›</button><button v-if="screen" type="button" :aria-label="autoRotate ? '暂停最近任务轮播' : '继续最近任务轮播'" :aria-pressed="autoRotate" @click="autoRotate = !autoRotate">{{ autoRotate ? '暂停' : '轮播' }}</button></div></div>
           </template>
           <p v-else class="dashboard-deadline-empty">当前筛选下没有尚未到期的任务</p>
         </div>
@@ -311,12 +410,12 @@ onBeforeUnmount(() => {
           <div class="dashboard-panel-heading"><h2>任务进展</h2><span>{{ visibleTasks.length }} 项</span></div>
           <div class="dashboard-tabs" aria-label="任务状态筛选"><button v-for="status in statuses" :key="status.value" type="button" :aria-pressed="selectedStatus === status.value" :class="{ active: selectedStatus === status.value }" @click="selectedStatus = status.value">{{ status.label }} <span>{{ status.count }}</span></button></div>
           <div v-if="pageTasks.length" ref="taskList" class="dashboard-task-list" :style="{ '--dashboard-columns': layout.columns, '--dashboard-rows': layout.rows }">
-            <article v-for="task in pageTasks" :key="task.id" class="dashboard-task" :class="dashboardTaskState(task, currentTime)">
-              <div class="dashboard-task-top"><span v-if="task.group" class="dashboard-tag" :title="task.group">{{ task.group }}</span><span class="dashboard-priority" :class="task.priority">{{ priorityLabels[task.priority] }}</span></div>
-              <h3 :title="task.title">{{ task.title }}</h3>
+            <article v-for="task in pageTasks" :key="task.id" class="dashboard-task" :class="dashboardTaskState(task, currentTime)" @click="openCard($event, task.id)">
+              <div class="dashboard-task-top"><span v-if="task.group" class="dashboard-tag" :title="task.group">{{ task.group }}</span><div class="dashboard-task-flags"><span v-if="dashboardUrgency(task, currentTime)" class="dashboard-urgency" :class="dashboardUrgency(task, currentTime)!.level">{{ dashboardUrgency(task, currentTime)!.label }}</span><span class="dashboard-priority" :class="task.priority">{{ priorityLabels[task.priority] }}</span></div></div>
+              <h3><button type="button" class="dashboard-task-title" :aria-label="`查看任务详情：${task.title}`" @click="openTask(task.id)">{{ task.title }}</button></h3>
               <div class="dashboard-assignees"><span class="dashboard-label">执行人</span><span v-if="!task.assignees.length">待分配</span><DashboardMember v-for="person in task.assignees" :key="person.key" :person="person" :profile="memberProfile(person.name)" /></div>
               <p v-if="task.note" class="dashboard-note" :title="task.note">{{ task.note }}</p>
-              <div class="dashboard-task-meta"><span :class="{ 'dashboard-danger': dashboardTaskState(task, currentTime) === 'overdue' }">{{ task.status === 'done' ? `完成于 ${formatTime(task.completedAt)}` : `截止 ${formatTime(task.deadline)}` }}</span><span v-if="task.publisher" class="dashboard-publishers">发布人 <DashboardMember v-for="person in task.publishers || [{ key: task.publisher, name: task.publisher, avatar: '' }]" :key="person.key" :person="person" :profile="memberProfile(person.name)" /></span></div>
+              <div class="dashboard-task-meta"><span :class="{ 'dashboard-danger': dashboardTaskState(task, currentTime) === 'overdue' }">{{ task.status === 'done' ? task.completedAt ? `完成于 ${formatTime(task.completedAt)}` : '完成时间未记录' : `截止 ${formatTime(task.deadline)}` }}</span><span v-if="task.publisher" class="dashboard-publishers">发布人 <DashboardMember v-for="person in task.publishers || [{ key: task.publisher, name: task.publisher, avatar: '' }]" :key="person.key" :person="person" :profile="memberProfile(person.name)" /></span></div>
             </article>
           </div>
           <div v-else class="dashboard-empty">{{ tasks.length ? '没有匹配的任务。' : '暂无任务，新的进展会显示在这里。' }}</div>
@@ -340,6 +439,8 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </template>
+    <DashboardTaskDetails v-if="activeTask" :task="activeTask" :now="currentTime" :profile-for="memberProfile" @close="selectedTaskId = null" />
+    <DashboardCompletion v-if="data && showCompletion" :tasks="scopedTasks" :now="currentTime" :scope="completionScope" @close="showCompletion = false" />
   </main>
 </template>
 
