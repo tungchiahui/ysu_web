@@ -37,6 +37,10 @@ function timestamp(value) {
   return number
 }
 
+export function dashboardTaskGroups(task) {
+  return Array.isArray(task.groups) ? task.groups : task.group ? [task.group] : []
+}
+
 export function normalizeDashboardRecords(records, overrides = {}) {
   const names = { ...DASHBOARD_FIELD_NAMES }
   for (const [key, value] of Object.entries(overrides)) {
@@ -52,8 +56,11 @@ export function normalizeDashboardRecords(records, overrides = {}) {
     const status = text(field('status'))
     if (!['未完成', '已完成'].includes(status)) throw new Error('INVALID_TASK_STATUS')
     const priority = text(field('priority'))
+    const groupValue = field('group')
+    const groups = [...new Set((Array.isArray(groupValue) ? groupValue : [groupValue])
+      .map(value => text(value).slice(0, 100)).filter(Boolean))]
     return [{
-      id: String(record.record_id), title: title.slice(0, 500), group: text(field('group')).slice(0, 100),
+      id: String(record.record_id), title: title.slice(0, 500), group: groups.join('、'), groups,
       assignees: people(field('assignees')), publisher: people(field('publisher')).map(person => person.name).join('、'),
       deadline: timestamp(field('deadline')), completedAt: timestamp(field('completedAt')),
       priority: /^(高|紧急|P0)(?:$|[-－：:])/i.test(priority) ? 'high' : /^(低|P2)(?:$|[-－：:])/i.test(priority) ? 'low' : 'medium',
@@ -69,7 +76,7 @@ export function dashboardTaskState(task, now = Date.now()) {
 export function selectDashboardTasks(tasks, { status = 'todo', group = 'all', search = '', now = Date.now() } = {}) {
   const keyword = search.trim().toLowerCase()
   return tasks.filter(task => (status === 'all' || dashboardTaskState(task, now) === status)
-    && (group === 'all' || task.group === group)
+    && (group === 'all' || dashboardTaskGroups(task).includes(group))
     && (!keyword || [task.title, task.group, task.publisher, task.note, ...task.assignees.map(person => person.name)].join(' ').toLowerCase().includes(keyword)))
     .sort((a, b) => status === 'done' ? (b.completedAt || 0) - (a.completedAt || 0)
       : (a.deadline ?? Infinity) - (b.deadline ?? Infinity) || ['high', 'medium', 'low'].indexOf(a.priority) - ['high', 'medium', 'low'].indexOf(b.priority))

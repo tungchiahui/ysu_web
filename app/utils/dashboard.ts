@@ -1,8 +1,8 @@
-export { dashboardTaskState, selectDashboardTasks, dashboardRanks } from '../../utils/dashboard-data.mjs'
+export { dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks } from '../../utils/dashboard-data.mjs'
 
 export type DashboardPerson = { key: string; name: string; avatar: string }
 export type DashboardTask = {
-  id: string; title: string; group: string; assignees: DashboardPerson[]; publisher: string
+  id: string; title: string; group: string; groups?: string[]; assignees: DashboardPerson[]; publisher: string
   deadline: number | null; completedAt: number | null; priority: 'high' | 'medium' | 'low'
   status: 'todo' | 'done'; note: string
 }

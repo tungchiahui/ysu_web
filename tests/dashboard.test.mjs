@@ -51,6 +51,20 @@ test('字段映射、错误状态及日期处理，不将错误表格伪装成�
   assert.throws(() => normalizeDashboardRecords([{ record_id: 'id', fields: { 任务名称: '任务', 完成状态: '未完成', 截止时间: 'bad date' } }]), /INVALID_TASK_DATE/)
 })
 
+test('现有任务表的部门多选分别筛选，不拼接标签或重复计任务', () => {
+  const tasks = normalizeDashboardRecords([{ record_id: 'task', fields: {
+    任务详情: '多部门任务', 负责人: [{ id: 'person', name: '成员' }],
+    '负责人.部门': ['哨兵组', '机械组', '组长', '机械组'], 完成情况: '未完成', 最晚截止日期: instant
+  } }], { title: '任务详情', assignees: '负责人', group: '负责人.部门' })
+  assert.deepEqual(tasks[0].groups, ['哨兵组', '机械组', '组长'])
+  assert.equal(tasks[0].group, '哨兵组、机械组、组长')
+  assert.equal(tasks[0].completedAt, null)
+  assert.equal(selectDashboardTasks(tasks, { status: 'all', group: '机械组' }).length, 1)
+  assert.equal(selectDashboardTasks(tasks, { status: 'all', group: '哨兵组' }).length, 1)
+  assert.equal(selectDashboardTasks(tasks, { status: 'all', group: '算法组' }).length, 0)
+  assert.equal(dashboardRanks(selectDashboardTasks(tasks, { status: 'all', group: '机械组' }), 'todo')[0].count, 1)
+})
+
 test('截止边界实时进入逾期，已完成任务不逾期，无截止任务排最后', () => {
   const tasks = dashboardFixtures(instant).data.tasks
   const task = tasks[0]

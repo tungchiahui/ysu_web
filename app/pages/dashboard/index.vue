@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { site } from '~/data/site'
-import { dashboardTaskState, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
+import { dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
 
 useHead({ title: `任务看板 | ${site.shortName}`, meta: [{ name: 'robots', content: 'noindex, nofollow' }], bodyAttrs: { class: 'dashboard-tech' } })
 const route = useRoute()
@@ -26,7 +26,7 @@ let disposed = false
 let generation = 0
 
 const tasks = computed(() => data.value?.tasks || [])
-const groups = computed(() => [...new Set(tasks.value.map(task => task.group).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'zh-CN')))
+const groups = computed(() => [...new Set<string>(tasks.value.flatMap(dashboardTaskGroups))].sort((a, b) => a.localeCompare(b, 'zh-CN')))
 const scopedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value, search: search.value, now: currentTime.value }))
 const counts = computed(() => ({
   todo: scopedTasks.value.filter(task => dashboardTaskState(task, currentTime.value) === 'todo').length,
@@ -44,7 +44,7 @@ const visibleTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.
 const pageSize = computed(() => screen.value ? screenPageSize.value : 6)
 const pages = computed(() => Math.max(1, Math.ceil(visibleTasks.value.length / pageSize.value)))
 const pageTasks = computed(() => visibleTasks.value.slice(pageIndex.value * pageSize.value, (pageIndex.value + 1) * pageSize.value))
-const rankedTasks = computed(() => tasks.value.filter(task => selectedGroup.value === 'all' || task.group === selectedGroup.value))
+const rankedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value }))
 const todoRanks = computed(() => dashboardRanks(rankedTasks.value, 'todo'))
 const doneRanks = computed(() => dashboardRanks(rankedTasks.value, 'done'))
 const nextDeadline = computed(() => scopedTasks.value.filter(task => task.status !== 'done' && task.deadline !== null && task.deadline > currentTime.value)
