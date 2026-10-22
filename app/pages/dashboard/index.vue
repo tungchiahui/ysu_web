@@ -5,6 +5,8 @@ import { dashboardGridLayout, dashboardMemberPath, dashboardTaskState, dashboard
 useHead({ title: `任务看板 | ${site.shortName}`, meta: [{ name: 'robots', content: 'noindex, nofollow' }], bodyAttrs: { class: 'dashboard-tech' } })
 const route = useRoute()
 const screen = ref(false)
+const viewportFitsScreen = ref(false)
+const paginated = computed(() => screen.value && viewportFitsScreen.value)
 const data = shallowRef<DashboardData | null>(null)
 const phase = ref('loading')
 const message = ref('')
@@ -50,8 +52,8 @@ const visibleTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.
   status: selectedStatus.value, group: selectedGroup.value, search: search.value, now: currentTime.value
 }))
 const pageSize = computed(() => layout.value.size)
-const pages = computed(() => Math.max(1, Math.ceil(visibleTasks.value.length / pageSize.value)))
-const pageTasks = computed(() => visibleTasks.value.slice(pageIndex.value * pageSize.value, (pageIndex.value + 1) * pageSize.value))
+const pages = computed(() => paginated.value ? Math.max(1, Math.ceil(visibleTasks.value.length / pageSize.value)) : 1)
+const pageTasks = computed(() => paginated.value ? visibleTasks.value.slice(pageIndex.value * pageSize.value, (pageIndex.value + 1) * pageSize.value) : visibleTasks.value)
 const rankedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value }))
 const todoRanks = computed(() => dashboardRanks(rankedTasks.value, 'todo'))
 const doneRanks = computed(() => dashboardRanks(rankedTasks.value, 'done'))
@@ -77,7 +79,7 @@ const clock = computed(() => currentTime.value ? new Intl.DateTimeFormat('zh-CN'
   timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
 }).format(currentTime.value) : '')
 
-watch([selectedStatus, selectedGroup, search, pageSize], () => { pageIndex.value = 0; lastRotation = currentTime.value })
+watch([selectedStatus, selectedGroup, search, pageSize, paginated], () => { pageIndex.value = 0; lastRotation = currentTime.value })
 watch(pages, value => { pageIndex.value = Math.min(pageIndex.value, value - 1) })
 // 静态页首次水合会暂时恢复预渲染地址；路由就绪后同步最终的查询参数。
 watch(() => route.query.screen, () => {
@@ -160,12 +162,11 @@ function toggleScreen() {
 
 const resumeRefresh = () => { if (!document.hidden && !['locked', 'closed'].includes(phase.value)) void refresh() }
 const resizeScreen = () => {
+  viewportFitsScreen.value = window.matchMedia('(min-width: 1200px) and (min-height: 700px)').matches
   if (!taskList.value) return
   const box = taskList.value.getBoundingClientRect()
-  const fixedScreen = screen.value && window.matchMedia('(min-width: 1200px) and (min-height: 700px)').matches
-  // 非固定高度页面按视口余量分页，窄屏保留至少一行并允许自然滚动。
-  const height = fixedScreen ? box.height : Math.max(220, window.innerHeight - box.top - 100)
-  layout.value = dashboardGridLayout(box.width, height, fixedScreen ? 10 : 14)
+  // 只有固定桌面大屏按高度分页；手机、平板和普通模式完整展示筛选结果，直接向下滚动。
+  layout.value = dashboardGridLayout(box.width, paginated.value ? box.height : 220, paginated.value ? 10 : 14)
 }
 watch(taskList, (element, previous) => {
   if (previous) layoutObserver?.unobserve(previous)
@@ -183,7 +184,7 @@ onMounted(() => {
   document.body.classList.toggle('dashboard-screen', screen.value)
   clockTimer = setInterval(() => {
     currentTime.value = Date.now()
-    if (screen.value && autoRotate.value && !document.hidden && pages.value > 1 && currentTime.value - lastRotation >= 15_000) {
+    if (paginated.value && autoRotate.value && !document.hidden && pages.value > 1 && currentTime.value - lastRotation >= 15_000) {
       pageIndex.value = (pageIndex.value + 1) % pages.value
       lastRotation = currentTime.value
     }
@@ -263,7 +264,7 @@ onBeforeUnmount(() => {
             </article>
           </div>
           <div v-else class="dashboard-empty">{{ tasks.length ? '没有匹配的任务。' : '暂无任务，新的进展会显示在这里。' }}</div>
-          <div v-if="pages > 1 || (screen && pageTasks.length)" class="dashboard-pagination" aria-label="任务分页"><button type="button" aria-label="上一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + pages - 1) % pages">上一页</button><span>{{ pageIndex + 1 }} / {{ pages }} <small>每页 {{ pageSize }} 项</small></span><button type="button" aria-label="下一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + 1) % pages">下一页</button><button v-if="screen" type="button" :disabled="pages === 1" :aria-pressed="autoRotate" @click="autoRotate = !autoRotate">{{ autoRotate ? '暂停轮播' : '继续轮播' }}</button></div>
+          <div v-if="paginated && pageTasks.length" class="dashboard-pagination" aria-label="任务分页"><button type="button" aria-label="上一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + pages - 1) % pages">上一页</button><span>{{ pageIndex + 1 }} / {{ pages }} <small>每页 {{ pageSize }} 项</small></span><button type="button" aria-label="下一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + 1) % pages">下一页</button><button v-if="screen" type="button" :disabled="pages === 1" :aria-pressed="autoRotate" @click="autoRotate = !autoRotate">{{ autoRotate ? '暂停轮播' : '继续轮播' }}</button></div>
         </section>
 
         <aside class="dashboard-ranks" aria-label="个人任务统计">
