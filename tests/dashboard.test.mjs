@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeDashboardRecords, dashboardTaskState, selectDashboardTasks, dashboardRanks, safeDashboardUrl } from '../utils/dashboard-data.mjs'
+import { dashboardGridLayout, dashboardMemberPath, normalizeDashboardRecords, dashboardTaskState, selectDashboardTasks, dashboardRanks, safeDashboardUrl } from '../utils/dashboard-data.mjs'
 import { createDashboardService } from '../utils/dashboard-service.mjs'
 import { dashboardFixtures } from './fixtures/dashboard.mjs'
 import { onRequest } from '../edge-functions/api/dashboard.js'
@@ -220,4 +220,22 @@ test('可选GitHub读取公开仓库，独立缓存并隔离GitHub故障', async
     assert.equal(result.github.unavailable, true)
     assert.deepEqual(result.github.events, [])
   }
+})
+
+test('面板容量随真实可用宽高增长，窄屏至少保留一列一行', () => {
+  assert.deepEqual(dashboardGridLayout(330, 210), { columns: 1, rows: 1, size: 1 })
+  assert.deepEqual(dashboardGridLayout(1060, 680), { columns: 3, rows: 3, size: 9 })
+  assert.deepEqual(dashboardGridLayout(2470, 1370), { columns: 7, rows: 6, size: 42 })
+  assert.equal(dashboardGridLayout(1060, 910).size, 12)
+  assert.equal(dashboardGridLayout(0, 0).size, 1)
+})
+
+test('成员入口直达已有档案，缺少档案时不生成链接', () => {
+  assert.equal(dashboardMemberPath('成员甲', ['成员甲']), '/team/' + encodeURIComponent('成员甲'))
+  assert.equal(dashboardMemberPath('成员乙 & /'), '')
+  const task = normalizeDashboardRecords([{ record_id: 'publisher-test', fields: {
+    任务名称: '任务', 完成情况: '未完成', 发布人: [{ id: 'p', name: '成员甲', avatar_url: 'https://example.test/avatar.png', email: 'private@example.test' }]
+  } }])[0]
+  assert.deepEqual(task.publishers, [{ key: 'p', name: '成员甲', avatar: 'https://example.test/avatar.png' }])
+  assert(!JSON.stringify(task).includes('private@example.test'))
 })

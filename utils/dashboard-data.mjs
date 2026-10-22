@@ -37,6 +37,17 @@ function timestamp(value) {
   return number
 }
 
+// 根据可用区域计算容量，尺寸与卡片样式的最小可读尺寸保持一致。
+export function dashboardGridLayout(width, height, gap = 10) {
+  const columns = Math.max(1, Math.floor((Math.max(0, width) + gap) / (340 + gap)))
+  const rows = Math.max(1, Math.floor((Math.max(0, height) + gap) / (220 + gap)))
+  return { columns, rows, size: columns * rows }
+}
+
+export function dashboardMemberPath(name, profileNames = []) {
+  return profileNames.includes(name) ? `/team/${encodeURIComponent(name)}` : ''
+}
+
 export function dashboardTaskGroups(task) {
   return Array.isArray(task.groups) ? task.groups : task.group ? [task.group] : []
 }
@@ -61,7 +72,7 @@ export function normalizeDashboardRecords(records, overrides = {}) {
       .map(value => text(value).slice(0, 100)).filter(Boolean))]
     return [{
       id: String(record.record_id), title: title.slice(0, 500), group: groups.join('、'), groups,
-      assignees: people(field('assignees')), publisher: people(field('publisher')).map(person => person.name).join('、'),
+      assignees: people(field('assignees')), publishers: people(field('publisher')), publisher: people(field('publisher')).map(person => person.name).join('、'),
       deadline: timestamp(field('deadline')), completedAt: timestamp(field('completedAt')),
       priority: /^(高|紧急|P0)(?:$|[-－：:])/i.test(priority) ? 'high' : /^(低|P2)(?:$|[-－：:])/i.test(priority) ? 'low' : 'medium',
       status: status === '已完成' ? 'done' : 'todo', note: text(field('note')).slice(0, 3000)
