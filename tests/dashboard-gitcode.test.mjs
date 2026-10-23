@@ -422,3 +422,36 @@ test('联调区分重定向、非JSON、请求头和传输异常，禁止跟随�
   const data = await createDashboardGitcode({ json: async () => { throw new Error('must not fetch') } })({ ...env, DASHBOARD_GITCODE_TOKEN: 'secret\n' })
   assert.equal(data.organization.reason, 'INVALID_TOKEN_FORMAT')
 })
+
+test('精简边缘运行时无需AbortSignal事件监听，父信号直达请求且预算仍能结束慢读取', async () => {
+  const Original = globalThis.AbortController
+  let aborted = 0
+  class MinimalController {
+    signal = { aborted: false }
+    abort() { this.signal.aborted = true; aborted++ }
+  }
+  globalThis.AbortController = MinimalController
+  try {
+    const env = { DASHBOARD_ENABLED: 'true', DASHBOARD_PUBLIC: 'true', FEISHU_APP_ID: 'test', FEISHU_APP_SECRET: 'test',
+      FEISHU_BITABLE_APP_TOKEN: 'test', FEISHU_BITABLE_TABLE_ID: 'test', DASHBOARD_GITCODE_ORG: 'team' }
+    const signals = []
+    const service = createDashboardService({ fetcher: async (url, options) => {
+      if (String(url).includes('open.feishu.cn')) return Response.json(String(url).includes('/auth/')
+        ? { code: 0, tenant_access_token: 'test-tenant' } : { code: 0, data: { items: [], has_more: false } })
+      signals.push(options.signal)
+      return Response.json(String(url).includes('/orgs/') ? [{ full_name: 'team/robot' }]
+        : String(url).includes('/contributors') ? [{ name: 'Author', contributions: 2 }] : { events: [] })
+    } })
+    const data = await (await service({ request: new Request('https://example.test/api/dashboard'), env })).json()
+    assert.equal(data.development.unavailable, false)
+    assert.equal(data.development.contributors[0].count, 2)
+    assert.equal(signals.length, 3)
+    assert(signals.every(signal => signal === signals[0]))
+    const read = createDashboardGitcode({ budgetMs: 20, json: async () => new Promise(() => {}) })
+    const start = Date.now()
+    const failed = await read(env)
+    assert(Date.now() - start < 1000)
+    assert.equal(failed.organization.reason, 'SYNC_BUDGET_EXCEEDED')
+    assert.equal(aborted, 1)
+  } finally { globalThis.AbortController = Original }
+})

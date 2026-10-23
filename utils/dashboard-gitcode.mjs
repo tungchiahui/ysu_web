@@ -124,20 +124,18 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
     if (env.DASHBOARD_GITCODE_TOKEN) headers.Authorization = `Bearer ${env.DASHBOARD_GITCODE_TOKEN}`
     const ttl = env.DASHBOARD_GITCODE_TOKEN ? 10 * 60_000 : 30 * 60_000
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), budgetMs)
+    let rejectBudget
+    const interrupted = new Promise((_, reject) => { rejectBudget = reject })
+    const timer = setTimeout(() => {
+      rejectBudget(new Error('SYNC_BUDGET_EXCEEDED'))
+      controller.abort()
+    }, budgetMs)
     const snapshot = entry => entry && entry.at !== undefined && now() - entry.at > MAX_AGE ? { ...entry, value: null, at: undefined } : entry
     async function request(url) {
       const signal = controller.signal
       if (env.DASHBOARD_GITCODE_TOKEN && !/^[\x21-\x7e]{1,4096}$/.test(env.DASHBOARD_GITCODE_TOKEN)) throw new Error('INVALID_TOKEN_FORMAT')
-      if (typeof signal.addEventListener !== 'function' || typeof signal.removeEventListener !== 'function') throw new Error('ABORT_LISTENERS_UNSUPPORTED')
       if (signal.aborted) throw new Error('SYNC_BUDGET_EXCEEDED')
-      let abort
-      const interrupted = new Promise((_, reject) => {
-        abort = () => reject(new Error('SYNC_BUDGET_EXCEEDED'))
-        signal.addEventListener('abort', abort, { once: true })
-      })
-      try { return await Promise.race([json(url, { headers, signal, redirect: 'manual' }), interrupted]) }
-      finally { signal.removeEventListener('abort', abort) }
+      return Promise.race([json(url, { headers, signal, redirect: 'manual' }), interrupted])
     }
     async function cached(key, load) {
       const entry = cache.get(key)

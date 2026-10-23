@@ -42,14 +42,13 @@ function createScopedService({ fetcher, now }) {
   let token, tokenPending, taskCache, taskPending
 
   async function json(url, options = {}) {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 10_000)
-    const abort = () => controller.abort()
-    if (options.signal?.aborted) controller.abort()
-    else options.signal?.addEventListener('abort', abort, { once: true })
+    // GitCode 的父信号已有更短的整轮预算，直接传递，避免套叠信号监听。
+    const controller = options.signal ? null : new AbortController()
+    const signal = options.signal || controller.signal
+    const timer = controller ? setTimeout(() => controller.abort(), 10_000) : undefined
     try {
       let result
-      try { result = await fetcher(url, { ...options, signal: controller.signal, redirect: options.redirect || 'error' }) }
+      try { result = await fetcher(url, { ...options, signal, redirect: options.redirect || 'error' }) }
       catch (error) {
         // 仅分类，不把任意异常、请求头或凭证内容送往客户端。
         const message = String(error?.message || '')
@@ -63,7 +62,7 @@ function createScopedService({ fetcher, now }) {
       }
       if (result.status === 204) return []
       return await result.json()
-    } finally { clearTimeout(timer); options.signal?.removeEventListener('abort', abort) }
+    } finally { clearTimeout(timer) }
   }
 
   async function tenantToken(env) {
