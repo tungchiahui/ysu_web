@@ -564,3 +564,37 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 
 .dashboard-development-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 14px; font-size: calc(var(--dashboard-text) * .8); color: var(--muted); }
 .dashboard-development-controls .dashboard-text-button { white-space: nowrap; }
+
+/* 顶部信息完整保留，用紧凑排列给任务让出视口空间。 */
+.dashboard-page { margin-top: 24px; }
+.dashboard-page .dashboard-heading { gap: 16px; margin-bottom: 16px; padding-bottom: 10px; }
+.dashboard-page .dashboard-insignia { width: clamp(48px, 3.2vw, 64px); padding: 4px; }
+.dashboard-page .dashboard-identity { gap: 12px; }
+.dashboard-page .dashboard-team-name { font-size: clamp(1rem, 1.1vw, 1.35rem); }
+.dashboard-page .dashboard-brand-caption { margin-top: 3px; font-size: .65rem; }
+.dashboard-page .dashboard-heading h1 { font-size: clamp(1.5rem, 2vw, 2.1rem); line-height: 1.2; }
+.dashboard-page .dashboard-heading .eyebrow { margin-bottom: 4px; font-size: .6rem; }
+.dashboard-page .dashboard-header-controls .dashboard-clock { margin-bottom: 5px; min-height: 0; font-size: .75rem; }
+.dashboard-page .dashboard-actions { gap: 6px; }
+.dashboard-page .dashboard-actions button { padding: 7px 10px; font-size: .8rem; }
+@media (min-width: 761px) and (max-width: 1199px) {
+  .dashboard-page .dashboard-heading { grid-template-columns: minmax(0, 1fr) auto; gap: 10px 16px; }
+  .dashboard-page .dashboard-title-block { grid-row: 1; grid-column: 2; border: 0; padding: 0; text-align: right; }
+  .dashboard-page .dashboard-header-controls { grid-column: 1 / -1; justify-self: stretch; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+  .dashboard-page .dashboard-header-controls .dashboard-clock { margin: 0; text-align: left; }
+}
+@media (max-width: 760px) {
+  .dashboard-page, .dashboard-page.is-screen { margin-top: 16px; }
+  .dashboard-page .dashboard-heading { grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+  .dashboard-page .dashboard-identity { justify-self: start; gap: 8px; }
+  .dashboard-page .dashboard-insignia { width: 40px; padding: 3px; }
+  .dashboard-page .dashboard-team-name { font-size: .85rem; letter-spacing: 0; }
+  .dashboard-page .dashboard-brand-caption { font-size: .55rem; letter-spacing: .05em; }
+  .dashboard-page .dashboard-title-block { grid-row: 1; grid-column: 2; border: 0; padding: 0; text-align: right; }
+  .dashboard-page .dashboard-title-block h1 { font-size: 1.15rem; }
+  .dashboard-page .dashboard-title-block .eyebrow { font-size: .43rem; letter-spacing: .05em; }
+  .dashboard-page .dashboard-header-controls { grid-column: 1 / -1; }
+  .dashboard-page .dashboard-header-controls .dashboard-clock { text-align: left; font-size: .65rem; margin-bottom: 6px; }
+  .dashboard-page .dashboard-header-controls .dashboard-actions { justify-content: flex-start; }
+  .dashboard-page .dashboard-actions button { padding: 6px 8px; font-size: .75rem; }
+}
