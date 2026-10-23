@@ -33,6 +33,8 @@ const autoRotate = ref(true)
 const taskList = ref<HTMLElement | null>(null)
 const dashboardPage = ref<HTMLElement | null>(null)
 const layout = ref({ columns: 1, rows: 2, size: 2 })
+const fixedGridHeight = ref<number | null>(null)
+const developmentEventLimit = ref(2)
 const { data: members } = await useAsyncData('dashboard:members', () => queryCollection('members').select('name', 'image', 'links').all())
 const codeProfile = (person: { name: string; href?: string; login?: string; memberName?: string }) => dashboardCodeProfile(person, members.value || [], site.logo)
 const memberNames = computed(() => (members.value || []).map(member => member.name))
@@ -85,7 +87,7 @@ const completionScope = computed(() => `${selectedGroup.value === 'all' ? '全�
 const development = computed(() => data.value?.development || data.value?.github)
 const developmentEvents = computed(() => {
   const events = development.value?.events || []
-  const size = screen.value ? 2 : 5
+  const size = fixedScreen.value ? developmentEventLimit.value : screen.value ? 2 : 5
   const start = Math.floor(currentTime.value / 20_000) % Math.max(1, Math.ceil(events.length / size)) * size
   return events.slice(start, start + size)
 })
@@ -240,27 +242,67 @@ const resumeRefresh = () => {
   currentTime.value = Date.now()
   if (!['locked', 'closed'].includes(phase.value)) void refresh()
 }
+const resizeDevelopment = (panel: HTMLElement, height: number) => {
+  const eventHeight = panel.querySelector<HTMLElement>('.dashboard-events li')?.getBoundingClientRect().height || 78
+  // 标题和小标题保留空间，按可读行高增加条目，仍按原 20 秒节奏轮播。
+  developmentEventLimit.value = Math.max(1, Math.floor((height - 100) / eventHeight))
+}
 const resizeScreen = () => {
   const candidate = screen.value && window.matchMedia('(min-width: 1200px) and (min-height: 700px)').matches
   // 先按固定大屏样式实测，避免普通模式较大的间距误判为没有空间。
   dashboardPage.value?.classList.toggle('is-fixed-screen', candidate)
   const occupied = [...(dashboardPage.value?.children || [])].filter(element =>
-    element.matches('.dashboard-heading, .dashboard-notice, .dashboard-toolbar, .dashboard-stats, .dashboard-competitions, .dashboard-development'))
+    element.matches('.dashboard-heading, .dashboard-notice, .dashboard-toolbar, .dashboard-stats, .dashboard-competitions'))
     .reduce((total, element) => {
       const style = getComputedStyle(element)
       return total + element.getBoundingClientRect().height + (Number.parseFloat(style.marginTop) || 0) + (Number.parseFloat(style.marginBottom) || 0)
     }, 0)
   // 短屏或顶部内容较多时解除固定高度，避免任务面板被压成零高度。
-  viewportFitsScreen.value = candidate && window.innerHeight - 32 - occupied >= 260
+  const developmentPanel = dashboardPage.value?.querySelector<HTMLElement>('.dashboard-development')
+  const developmentReserve = developmentPanel ? 226 : 0 // 210px 基础展示区和 16px 区间距。
+  viewportFitsScreen.value = candidate && window.innerHeight - 32 - occupied - developmentReserve >= 360
   dashboardPage.value?.classList.toggle('is-fixed-screen', fixedScreen.value)
   desktopPagination.value = window.matchMedia('(min-width: 1000px)').matches
-  if (!taskList.value) return
+  if (!taskList.value) {
+    const panel = dashboardPage.value?.querySelector<HTMLElement>('.dashboard-tasks')
+    const style = panel && getComputedStyle(panel)
+    fixedGridHeight.value = fixedScreen.value && developmentPanel && panel && style ? Math.ceil(
+      [...panel.children].reduce((total, element) => {
+        const childStyle = getComputedStyle(element)
+        return total + element.getBoundingClientRect().height + (Number.parseFloat(childStyle.marginTop) || 0) + (Number.parseFloat(childStyle.marginBottom) || 0)
+      }, 0) + Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth)
+    ) : null
+    if (fixedGridHeight.value !== null && developmentPanel && dashboardPage.value && panel) {
+      resizeDevelopment(developmentPanel, dashboardPage.value.getBoundingClientRect().bottom - panel.getBoundingClientRect().top - fixedGridHeight.value - 16)
+    }
+    return
+  }
   const box = taskList.value.getBoundingClientRect()
   // 桌面普通模式用独立的视口预算分页，不使用完整任务列表的高度，避免反馈增长；窄屏连续滚动。
   const fontSize = Number.parseFloat(getComputedStyle(taskList.value).fontSize) || 16
-  const height = fixedScreen.value ? box.height : Math.max(300, Math.min(window.innerHeight * .62, 900))
   const cardHeight = Number.parseFloat(getComputedStyle(taskList.value).gridAutoRows) || 224 * Math.max(1, fontSize / 16)
+  const grid = dashboardPage.value?.querySelector<HTMLElement>('.dashboard-grid')
+  const panel = taskList.value.closest<HTMLElement>('.dashboard-tasks')
+  const pager = panel?.querySelector<HTMLElement>('.dashboard-pagination')
+  // 以页面边界计算独立预算，不再从已经收紧的列表高度反推容量，避免越算越少。
+  const panelStyle = panel && getComputedStyle(panel)
+  const panelBottom = panelStyle ? Number.parseFloat(panelStyle.paddingBottom) + Number.parseFloat(panelStyle.borderBottomWidth) : 0
+  const chrome = panel ? box.top - panel.getBoundingClientRect().top + (pager?.getBoundingClientRect().height || 0) + panelBottom : 0
+  const available = dashboardPage.value && grid ? dashboardPage.value.getBoundingClientRect().bottom - grid.getBoundingClientRect().top : 0
+  const height = fixedScreen.value ? Math.max(0, available - developmentReserve - chrome) : Math.max(300, Math.min(window.innerHeight * .62, 900))
+  if (fixedScreen.value && height < cardHeight) {
+    viewportFitsScreen.value = false
+    dashboardPage.value?.classList.remove('is-fixed-screen')
+    fixedGridHeight.value = null
+    return
+  }
   layout.value = dashboardGridLayout(box.width, height, fixedScreen.value ? 10 : 14, fontSize, cardHeight)
+  const usedRows = Math.min(layout.value.rows, Math.max(1, Math.ceil(pageTasks.value.length / layout.value.columns)))
+  fixedGridHeight.value = fixedScreen.value && developmentPanel ? Math.ceil(chrome + usedRows * cardHeight + (usedRows - 1) * 10) : null
+  if (fixedScreen.value && developmentPanel) {
+    const developmentHeight = available - (fixedGridHeight.value || chrome + height) - 16
+    resizeDevelopment(developmentPanel, developmentHeight)
+  }
 }
 watch(taskList, (element, previous) => {
   if (previous) layoutObserver?.unobserve(previous)
@@ -268,7 +310,7 @@ watch(taskList, (element, previous) => {
   void nextTick(resizeScreen)
 }, { flush: 'post' })
 watch([screen, showSyncDetails], () => { void nextTick(resizeScreen) })
-watch([data, selectedGroup, search], () => { void nextTick(resizeScreen) }, { flush: 'post' })
+watch([data, selectedGroup, search, selectedStatus, pageIndex, () => pageTasks.value.length], () => { void nextTick(resizeScreen) }, { flush: 'post' })
 onMounted(() => {
   currentTime.value = Date.now()
   lastRotation = currentTime.value
@@ -315,7 +357,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main ref="dashboardPage" class="dashboard-page" :class="{ 'is-screen': screen, 'is-fixed-screen': fixedScreen, 'is-paginated': paginated, 'is-gated': !data }">
+  <main ref="dashboardPage" class="dashboard-page" :class="{ 'is-screen': screen, 'is-fixed-screen': fixedScreen, 'is-paginated': paginated, 'is-gated': !data, 'has-development-layout': fixedGridHeight !== null }" :style="{ '--dashboard-grid-height': fixedGridHeight === null ? undefined : `${fixedGridHeight}px` }">
     <header class="dashboard-heading">
       <NuxtLink class="dashboard-identity" to="/" :aria-label="`${site.university}${site.shortName}，返回首页`">
         <span class="dashboard-insignia"><img :src="site.logo" :alt="site.logoAlt" width="96" height="96"></span>

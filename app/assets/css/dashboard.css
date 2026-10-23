@@ -641,7 +641,8 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 
 /* 赛事借用标题两侧空间，不再占用独立卡片行。 */
 .dashboard-page .dashboard-heading { grid-template-columns: minmax(0, 1fr) minmax(0, 2.3fr) minmax(0, 1fr); }
-.dashboard-heading-center { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 12px; }
+.dashboard-heading-center { min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: stretch; gap: 12px; }
+.dashboard-heading-center .dashboard-title-block { align-self: center; }
 .dashboard-page .dashboard-heading-center .dashboard-title-block { grid-column: 2; grid-row: 1; padding: 0; border: 0; text-align: center; }
 .dashboard-heading-competitions { display: contents; }
 .dashboard-heading-event { min-width: 0; padding: 2px 10px; border-left: 1px solid rgba(57, 230, 244, .25); color: var(--cyan); }
@@ -784,4 +785,17 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
   .is-screen .dashboard-header-controls { grid-column: 3; grid-row: 1; }
   .is-screen .dashboard-heading-competitions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1 / -1; gap: 16px; }
   .is-screen .dashboard-heading-event:first-child, .is-screen .dashboard-heading-event:nth-child(2) { grid-column: auto; grid-row: auto; }
+}
+
+/* 完整任务行优先；不足一行的余量交给研发动态，不留在分页上方。 */
+@media (min-width: 1200px) and (min-height: 700px) {
+  .is-fixed-screen.has-development-layout .dashboard-grid { flex: 0 0 var(--dashboard-grid-height); }
+  .is-fixed-screen .dashboard-task-list { flex: 1 1 auto; }
+  .is-fixed-screen .dashboard-development { flex: 1 1 0; min-height: 210px; max-height: none; display: flex; flex-direction: column; overflow: hidden; }
+  .is-fixed-screen .dashboard-development > .dashboard-panel-heading { flex: 0 0 auto; }
+  .is-fixed-screen #dashboard-sync-details { flex: 0 0 auto; max-height: 35%; overflow: auto; }
+  .is-fixed-screen .dashboard-development-grid { flex: 1 1 0; min-height: 0; }
+  .is-fixed-screen .dashboard-development-grid > div { display: flex; flex-direction: column; min-height: 0; }
+  .is-fixed-screen .dashboard-development-grid h3 { flex: 0 0 auto; }
+  .is-fixed-screen .dashboard-code-ranks, .is-fixed-screen .dashboard-events { flex: 1 1 0; min-height: 0; max-height: none; overflow-y: auto; }
 }
