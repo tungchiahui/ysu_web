@@ -392,3 +392,33 @@ test('真实接入诊断只返回HTTP状态与固定错误码，不返回凭证�
   const invalid = await createDashboardGitcode({ json: async () => ({ unexpected: true }) })(env)
   assert.equal(invalid.organization.reason, 'INVALID_ORGANIZATION_REPOS')
 })
+
+test('联调区分重定向、非JSON、请求头和传输异常，禁止跟随重定向转发凭证', async () => {
+  const env = { DASHBOARD_ENABLED: 'true', DASHBOARD_PUBLIC: 'true', FEISHU_APP_ID: 'test', FEISHU_APP_SECRET: 'test',
+    FEISHU_BITABLE_APP_TOKEN: 'test', FEISHU_BITABLE_TABLE_ID: 'test', DASHBOARD_GITCODE_ORG: 'team', DASHBOARD_GITCODE_TOKEN: 'diagnostic-secret-test-only' }
+  for (const [result, reason] of [
+    [() => new Response('', { status: 301, headers: { Location: 'https://different.example.test/' } }), 'HTTP_301'],
+    [() => new Response('<html>private error body</html>'), 'INVALID_JSON_RESPONSE'],
+    [() => { throw new TypeError('invalid header diagnostic-secret-test-only') }, 'INVALID_REQUEST_HEADERS'],
+    [() => { throw new TypeError('fetch failed diagnostic-secret-test-only') }, 'UPSTREAM_FETCH_FAILED']
+  ]) {
+    let calls = 0
+    const service = createDashboardService({ fetcher: async (url, options) => {
+      if (String(url).includes('open.feishu.cn')) return Response.json(String(url).includes('/auth/')
+        ? { code: 0, tenant_access_token: 'test-tenant' } : { code: 0, data: { items: [], has_more: false } })
+      calls++
+      assert.equal(new URL(url).origin, 'https://api.gitcode.com')
+      assert.equal(options.redirect, 'manual')
+      return result()
+    } })
+    const response = await service({ request: new Request('https://example.test/api/dashboard'), env })
+    const data = await response.json()
+    assert.equal(response.status, 200)
+    assert.equal(calls, 1)
+    assert.equal(data.development.organization.reason, reason)
+    assert(!JSON.stringify(data).includes('diagnostic-secret-test-only'))
+    assert(!JSON.stringify(data).includes('private error body'))
+  }
+  const data = await createDashboardGitcode({ json: async () => { throw new Error('must not fetch') } })({ ...env, DASHBOARD_GITCODE_TOKEN: 'secret\n' })
+  assert.equal(data.organization.reason, 'INVALID_TOKEN_FORMAT')
+})

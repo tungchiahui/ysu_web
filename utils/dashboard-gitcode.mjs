@@ -6,9 +6,12 @@ const cleanName = (value, fallback) => typeof value === 'string' && value.trim()
 const empty = () => ({ enabled: false, unavailable: false, contributors: [], events: [], sources: [] })
 const diagnosticCodes = new Set(['SYNC_BUDGET_EXCEEDED', 'INVALID_ORGANIZATION_REPOS', 'INVALID_ORGANIZATION_REPO',
   'INVALID_ORGANIZATION_NAMESPACE', 'INVALID_ORGANIZATION_PAGINATION', 'ORGANIZATION_REPO_LIMIT',
-  'INVALID_CONTRIBUTORS', 'INVALID_CODE_EVENTS', 'INVALID_CODE_PERSON', 'CONFLICTING_CODE_PERSON'])
+  'INVALID_CONTRIBUTORS', 'INVALID_CODE_EVENTS', 'INVALID_CODE_PERSON', 'CONFLICTING_CODE_PERSON',
+  'ABORT_LISTENERS_UNSUPPORTED', 'INVALID_TOKEN_FORMAT', 'UPSTREAM_FETCH_FAILED', 'INVALID_REQUEST_HEADERS', 'UPSTREAM_REDIRECT'])
 function diagnostic(error) {
-  if (Number.isInteger(error?.status) && error.status >= 400 && error.status <= 599) return `HTTP_${error.status}`
+  if (Number.isInteger(error?.status) && error.status >= 300 && error.status <= 599) return `HTTP_${error.status}`
+  if (error?.name === 'SyntaxError') return 'INVALID_JSON_RESPONSE'
+  if (error?.name === 'TypeError') return 'TYPE_ERROR'
   return diagnosticCodes.has(error?.message) ? error.message : 'READ_FAILED'
 }
 
@@ -125,13 +128,15 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
     const snapshot = entry => entry && entry.at !== undefined && now() - entry.at > MAX_AGE ? { ...entry, value: null, at: undefined } : entry
     async function request(url) {
       const signal = controller.signal
+      if (env.DASHBOARD_GITCODE_TOKEN && !/^[\x21-\x7e]{1,4096}$/.test(env.DASHBOARD_GITCODE_TOKEN)) throw new Error('INVALID_TOKEN_FORMAT')
+      if (typeof signal.addEventListener !== 'function' || typeof signal.removeEventListener !== 'function') throw new Error('ABORT_LISTENERS_UNSUPPORTED')
       if (signal.aborted) throw new Error('SYNC_BUDGET_EXCEEDED')
       let abort
       const interrupted = new Promise((_, reject) => {
         abort = () => reject(new Error('SYNC_BUDGET_EXCEEDED'))
         signal.addEventListener('abort', abort, { once: true })
       })
-      try { return await Promise.race([json(url, { headers, signal }), interrupted]) }
+      try { return await Promise.race([json(url, { headers, signal, redirect: 'manual' }), interrupted]) }
       finally { signal.removeEventListener('abort', abort) }
     }
     async function cached(key, load) {

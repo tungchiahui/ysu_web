@@ -48,7 +48,14 @@ function createScopedService({ fetcher, now }) {
     if (options.signal?.aborted) controller.abort()
     else options.signal?.addEventListener('abort', abort, { once: true })
     try {
-      const result = await fetcher(url, { ...options, signal: controller.signal, redirect: 'error' })
+      let result
+      try { result = await fetcher(url, { ...options, signal: controller.signal, redirect: options.redirect || 'error' }) }
+      catch (error) {
+        // 仅分类，不把任意异常、请求头或凭证内容送往客户端。
+        const message = String(error?.message || '')
+        throw new Error(/redirect/i.test(message) ? 'UPSTREAM_REDIRECT'
+          : /header|ByteString|ISO-8859-1|Latin.?1/i.test(message) ? 'INVALID_REQUEST_HEADERS' : 'UPSTREAM_FETCH_FAILED')
+      }
       if (!result.ok) {
         const error = new Error(result.status === 401 ? 'UPSTREAM_UNAUTHORIZED' : 'UPSTREAM_UNAVAILABLE')
         error.status = result.status
