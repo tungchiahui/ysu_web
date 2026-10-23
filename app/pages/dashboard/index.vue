@@ -86,8 +86,9 @@ const countdown = computed(() => {
   const seconds = Math.max(0, Math.floor((nextDeadline.value.deadline - currentTime.value) / 1000))
   return `${Math.floor(seconds / 86400)} 天 ${String(Math.floor(seconds / 3600) % 24).padStart(2, '0')}:${String(Math.floor(seconds / 60) % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
 })
-const githubEvents = computed(() => {
-  const events = data.value?.github.events || []
+const development = computed(() => data.value?.development || data.value?.github)
+const developmentEvents = computed(() => {
+  const events = development.value?.events || []
   const size = screen.value ? 2 : 5
   const start = Math.floor(currentTime.value / 20_000) % Math.max(1, Math.ceil(events.length / size)) * size
   return events.slice(start, start + size)
@@ -152,7 +153,7 @@ async function refresh() {
       message.value = '看板尚未开放，请联系团队负责人。'
       return
     }
-    if (!result.ok || !Array.isArray(body?.tasks) || !body?.github) throw new Error('DATA_UNAVAILABLE')
+    if (!result.ok || !Array.isArray(body?.tasks) || !(body?.development || body?.github)) throw new Error('DATA_UNAVAILABLE')
     const entering = !data.value
     data.value = body
     if (selectedGroup.value !== 'all' && !groups.value.includes(selectedGroup.value)) selectedGroup.value = 'all'
@@ -431,11 +432,12 @@ onBeforeUnmount(() => {
         </aside>
       </div>
 
-      <section v-if="data.github.enabled" class="dashboard-panel dashboard-development" aria-label="研发动态">
-        <div class="dashboard-panel-heading"><h2>研发动态</h2><span>{{ data.github.unavailable ? '更新暂时中断' : `更新于 ${formatTime(data.github.updatedAt)}` }}</span></div>
+      <section v-if="development?.enabled" class="dashboard-panel dashboard-development" aria-label="研发动态">
+        <div class="dashboard-panel-heading"><h2>研发动态 <small class="dashboard-code-platform">GitCode</small></h2><span>{{ development.configurationError ? '仓库配置待检查' : development.unavailable ? '部分数据暂不可用' : `更新于 ${formatTime(development.updatedAt)}` }}</span></div>
+        <ul v-if="development.sources?.length" class="dashboard-code-sources" aria-label="代码仓库同步状态"><li v-for="source in development.sources" :key="source.key" :class="{ 'is-unavailable': source.unavailable }"><a :href="source.href" target="_blank" rel="noopener noreferrer">{{ source.repo }}</a><span>{{ source.unavailable ? '更新中断' : '已同步' }}</span><time v-if="source.updatedAt" :datetime="new Date(source.updatedAt).toISOString()">{{ formatTime(source.updatedAt) }}</time></li></ul>
         <div class="dashboard-development-grid">
-          <div><h3>代码贡献榜</h3><ol v-if="data.github.contributors.length" class="dashboard-code-ranks"><li v-for="person in data.github.contributors" :key="person.name"><a :href="person.href" target="_blank" rel="noopener noreferrer"><img v-if="person.avatar" :src="person.avatar" alt="" loading="lazy"><span>{{ person.name }}</span><strong>{{ person.count }}</strong></a></li></ol><p v-else class="dashboard-empty">暂无贡献记录</p></div>
-          <div><h3>最近更新</h3><ul v-if="githubEvents.length" class="dashboard-events"><li v-for="event in githubEvents" :key="event.id"><a :href="event.href" target="_blank" rel="noopener noreferrer"><time>{{ formatTime(event.at) }}</time><span><strong>{{ event.actor }}</strong> {{ event.action }}<small>{{ event.repo }}</small></span><span aria-hidden="true">↗</span></a></li></ul><p v-else class="dashboard-empty">暂无研发动态</p></div>
+          <div><h3>代码贡献榜 <small>提交次数</small></h3><ol v-if="development.contributors.length" class="dashboard-code-ranks"><li v-for="person in development.contributors" :key="person.key || person.name"><DashboardCodeContributor :person="person" :profile="memberProfile(person.memberName || person.name)" /></li></ol><p v-else class="dashboard-empty">{{ development.unavailable ? '暂时无法读取贡献记录' : '暂无贡献记录' }}</p></div>
+          <div><h3>最近更新</h3><ul v-if="developmentEvents.length" class="dashboard-events"><li v-for="event in developmentEvents" :key="event.id"><a :href="event.href" target="_blank" rel="noopener noreferrer"><time>{{ formatTime(event.at) }}</time><span><strong>{{ event.actor }}</strong> {{ event.action }}<small>{{ event.repo }}</small></span><span aria-hidden="true">↗</span></a></li></ul><p v-else class="dashboard-empty">{{ development.unavailable ? '暂时无法读取研发动态' : '暂无研发动态' }}</p></div>
         </div>
       </section>
     </template>

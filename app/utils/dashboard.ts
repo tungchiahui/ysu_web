@@ -6,11 +6,15 @@ export type DashboardTask = {
   deadline: number | null; completedAt: number | null; priority: 'high' | 'medium' | 'low'
   status: 'todo' | 'done'; note: string
 }
+export type DashboardDevelopment = {
+  enabled: boolean; unavailable: boolean; updatedAt?: number; configurationError?: boolean
+  contributors: { key?: string; name: string; memberName?: string; count: number; avatar: string; href: string }[]
+  events: { id: string; repo: string; actor: string; action: string; at: number; href: string }[]
+  sources?: { key: string; repo: string; href: string; unavailable: boolean; contributionsUnavailable: boolean; eventsUnavailable: boolean; updatedAt?: number }[]
+}
 export type DashboardData = {
   tasks: DashboardTask[]; updatedAt: number; stale: boolean; refreshSeconds: number; demo?: boolean
-  github: {
-    enabled: boolean; unavailable: boolean; updatedAt?: number
-    contributors: { name: string; count: number; avatar: string; href: string }[]
-    events: { id: string; repo: string; actor: string; action: string; at: number; href: string }[]
-  }
+  development?: DashboardDevelopment
+  /** 兼容旧部署响应，新增代码使用 development。 */
+  github?: DashboardDevelopment
 }

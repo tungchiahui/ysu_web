@@ -190,36 +190,30 @@ test('公开访问必须显式开启，空口令不会自动使私有看板公�
   assert.equal((await handler({ request, env: { ...env, DASHBOARD_ACCESS_CODE: '', DASHBOARD_PUBLIC: 'true' } })).status, 200)
 })
 
-test('可选GitHub读取公开仓库，独立缓存并隔离GitHub故障', async () => {
-  const calls = []
-  const fetcher = upstream(calls)
+test('可选GitCode读取仓库统计，独立缓存并隔离故障', async () => {
+  const calls = [], fetcher = upstream(calls)
   const handler = createDashboardService({ now: () => instant, fetcher: async (url, options) => {
-    if (!String(url).startsWith('https://api.github.com')) return fetcher(url, options)
+    if (!String(url).startsWith('https://api.gitcode.com/')) return fetcher(url, options)
     calls.push({ url })
-    if (String(url).includes('/contributors')) return reply([{ login: 'developer', contributions: 8, avatar_url: 'https://avatars.githubusercontent.com/u/1' }])
-    if (String(url).includes('/events')) return reply([{ id: '1', type: 'PushEvent', actor: { login: 'developer' }, created_at: '2027-01-01T00:00:00Z' }])
-    return reply({ private: false })
+    if (String(url).includes('/contributors')) return reply([{ name: 'developer', email: 'private@example.test', contributions: 8 }])
+    return reply({ events: [{ id: 1, action_name: 'pushed', author: { username: 'developer' }, created_at: '2026-12-31T16:00:00Z' }] })
   } })
-  const config = context({ env: { ...env, DASHBOARD_GITHUB_REPOS: 'example/robot' } })
+  const config = context({ env: { ...env, DASHBOARD_GITCODE_REPOS: 'example/robot' } })
   const body = await (await handler(config)).json()
-  assert.equal(body.github.contributors[0].count, 8)
-  assert.equal(body.github.events[0].action, '推送了代码')
+  assert.equal(body.development.contributors[0].count, 8)
+  assert.equal(body.development.events[0].action, '推送了代码')
+  assert(!JSON.stringify(body).includes('private@example.test'))
   await handler(config)
-  assert.equal(calls.length, 5)
-  const broken = await (await handler(context({ env: { ...env, DASHBOARD_GITHUB_REPOS: 'https://malicious.test/' } }))).json()
+  assert.equal(calls.length, 4)
+  const broken = await (await handler(context({ env: { ...env, DASHBOARD_GITCODE_REPOS: 'https://malicious.test/' } }))).json()
   assert.equal(broken.tasks.length, 12)
-  assert.equal(broken.github.unavailable, true)
-  for (const privateRepo of [true, false]) {
-    const isolated = createDashboardService({ fetcher: async (url, options) => {
-      if (!String(url).startsWith('https://api.github.com')) return fetcher(url, options)
-      if (privateRepo) return reply({ private: true })
-      return new Response('unavailable', { status: 500 })
-    } })
-    const result = await (await isolated(config)).json()
-    assert.equal(result.tasks.length, 12)
-    assert.equal(result.github.unavailable, true)
-    assert.deepEqual(result.github.events, [])
-  }
+  assert.equal(broken.development.unavailable, true)
+  const isolated = createDashboardService({ fetcher: async (url, options) => String(url).startsWith('https://api.gitcode.com/')
+    ? new Response('unavailable', { status: 500 }) : fetcher(url, options) })
+  const result = await (await isolated(config)).json()
+  assert.equal(result.tasks.length, 12)
+  assert.equal(result.development.unavailable, true)
+  assert.deepEqual(result.development.events, [])
 })
 
 test('面板容量随真实可用宽高增长，窄屏至少保留一列一行', () => {

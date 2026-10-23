@@ -540,3 +540,16 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
   .dashboard-completion-metrics > div { border-radius: 12px; }
 }
 @keyframes dashboard-sheet-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+
+/* GitCode 研发动态按仓库展示同步状态。 */
+.dashboard-code-sources { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 0; margin: 0 0 18px; list-style: none; color: var(--muted); font-size: calc(var(--dashboard-text) * .72); }
+.dashboard-code-sources li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; max-width: 100%; }
+.dashboard-code-sources a { color: var(--ink-soft); overflow-wrap: anywhere; }
+.dashboard-code-sources li > span { color: var(--green); }
+.dashboard-code-sources .is-unavailable > span { color: var(--gold); }
+.dashboard-development-grid h3 small { color: var(--muted); font-size: .7rem; font-weight: 400; }
+.dashboard-code-ranks .dashboard-code-person { display: flex; align-items: center; gap: 8px; padding: 7px 0; font-size: calc(var(--dashboard-text) * .95); }
+.dashboard-code-person .dashboard-avatar { flex: 0 0 auto; }
+.dashboard-code-person-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.dashboard-code-platform { color: var(--muted); font-size: .7rem; font-weight: 400; }
+@media (min-width: 1200px) and (min-height: 700px) { .is-fixed-screen .dashboard-code-sources { margin-bottom: 10px; } }

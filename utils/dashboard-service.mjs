@@ -1,7 +1,7 @@
-import { normalizeDashboardRecords, safeDashboardUrl } from './dashboard-data.mjs'
+import { normalizeDashboardRecords } from './dashboard-data.mjs'
+import { createDashboardGitcode } from './dashboard-gitcode.mjs'
 
 const FEISHU = 'https://open.feishu.cn/open-apis'
-const GITHUB = 'https://api.github.com'
 const TASK_TTL = 30_000
 const STALE_TTL = 15 * 60_000
 
@@ -26,7 +26,8 @@ export function createDashboardService({ fetcher = globalThis.fetch, now = Date.
   return context => {
     const env = context.env || {}
     const keys = ['DASHBOARD_ENABLED', 'DASHBOARD_PUBLIC', 'DASHBOARD_ACCESS_CODE', 'FEISHU_APP_ID', 'FEISHU_APP_SECRET',
-      'FEISHU_BITABLE_APP_TOKEN', 'FEISHU_BITABLE_TABLE_ID', 'FEISHU_BITABLE_VIEW_ID', 'FEISHU_FIELD_MAP', 'DASHBOARD_GITHUB_REPOS', 'DASHBOARD_GITHUB_TOKEN']
+      'FEISHU_BITABLE_APP_TOKEN', 'FEISHU_BITABLE_TABLE_ID', 'FEISHU_BITABLE_VIEW_ID', 'FEISHU_FIELD_MAP',
+      'DASHBOARD_GITCODE_REPOS', 'DASHBOARD_GITCODE_TOKEN', 'DASHBOARD_GITCODE_PEOPLE']
     const scope = JSON.stringify(keys.map(key => env[key] || ''))
     if (!handlers.has(scope)) {
       if (handlers.size >= 4) handlers.delete(handlers.keys().next().value)
@@ -38,7 +39,7 @@ export function createDashboardService({ fetcher = globalThis.fetch, now = Date.
 
 function createScopedService({ fetcher, now }) {
   // 仅为当前运行实例中的临时缓存；业务记录始终由飞书保存。
-  let token, tokenPending, taskCache, taskPending, githubCache, githubPending
+  let token, tokenPending, taskCache, taskPending
 
   async function json(url, options = {}) {
     const controller = new AbortController()
@@ -110,50 +111,7 @@ function createScopedService({ fetcher, now }) {
     return taskPending
   }
 
-  async function readGithub(env, repos) {
-    const headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'YSU-Team-Dashboard', 'X-GitHub-Api-Version': '2022-11-28' }
-    if (env.DASHBOARD_GITHUB_TOKEN) headers.Authorization = `Bearer ${env.DASHBOARD_GITHUB_TOKEN}`
-    const contributors = new Map(), events = []
-    await Promise.all(repos.map(async repo => {
-      const meta = await json(`${GITHUB}/repos/${repo}`, { headers })
-      if (meta.private !== false) throw new Error('PRIVATE_REPOSITORY')
-      const [people, recent] = await Promise.all([
-        json(`${GITHUB}/repos/${repo}/contributors?per_page=100`, { headers }),
-        json(`${GITHUB}/repos/${repo}/events?per_page=20`, { headers })
-      ])
-      if (!Array.isArray(people) || !Array.isArray(recent)) throw new Error('GITHUB_UNAVAILABLE')
-      for (const person of people) {
-        if (!/^[a-z\d-]+$/i.test(person.login) || !Number.isFinite(person.contributions)) continue
-        const row = contributors.get(person.login) || { name: person.login, count: 0, avatar: safeDashboardUrl(person.avatar_url), href: `https://github.com/${person.login}` }
-        row.count += person.contributions
-        contributors.set(person.login, row)
-      }
-      const labels = { PushEvent: '推送了代码', PullRequestEvent: '更新了 Pull Request', IssuesEvent: '更新了 Issue', ReleaseEvent: '发布了版本', CreateEvent: '创建了分支或标签' }
-      for (const event of recent) {
-        if (!Object.hasOwn(labels, event.type)) continue
-        events.push({ id: `${repo}:${event.id}`, repo, actor: event.actor?.login || 'GitHub',
-          action: labels[event.type], at: Date.parse(event.created_at) || 0, href: `https://github.com/${repo}` })
-      }
-    }))
-    return { enabled: true, contributors: [...contributors.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, 8),
-      events: events.sort((a, b) => b.at - a.at).slice(0, 20), updatedAt: now(), unavailable: false }
-  }
-
-  async function github(env) {
-    const repos = [...new Set(String(env.DASHBOARD_GITHUB_REPOS || '').split(',').map(value => value.trim()).filter(Boolean))]
-    if (!repos.length) return { enabled: false, contributors: [], events: [], unavailable: false }
-    if (repos.length > 5 || repos.some(repo => !/^[a-z\d-]+\/[a-z\d_.-]+$/i.test(repo))) {
-      return { enabled: true, contributors: [], events: [], unavailable: true }
-    }
-    const ttl = env.DASHBOARD_GITHUB_TOKEN ? 10 * 60_000 : 30 * 60_000
-    if (githubCache && now() - githubCache.updatedAt < ttl) return githubCache
-    if (!githubPending) githubPending = readGithub(env, repos).then(value => {
-      githubCache = value
-      return value
-    }).catch(() => ({ ...(githubCache && now() - githubCache.updatedAt < 24 * 60 * 60_000 ? githubCache : { enabled: true, contributors: [], events: [] }), unavailable: true }))
-      .finally(() => { githubPending = undefined })
-    return githubPending
-  }
+  const development = createDashboardGitcode({ json, now })
 
   return async function handle({ request, env = {} }) {
     if (request.method !== 'GET') return response({ code: 'METHOD_NOT_ALLOWED' }, 405, { Allow: 'GET' })
@@ -170,8 +128,9 @@ function createScopedService({ fetcher, now }) {
       }
     }
     try {
-      const [data, development] = await Promise.all([tasks(env), github(env)])
-      return response({ tasks: data.value, updatedAt: data.at, stale: data.stale, refreshSeconds: 30, github: development })
+      const [data, activity] = await Promise.all([tasks(env), development(env)])
+      // github 仅兼容缓存中的旧页面；内容由 GitCode 提供，不再请求 GitHub API。
+      return response({ tasks: data.value, updatedAt: data.at, stale: data.stale, refreshSeconds: 30, development: activity, github: activity })
     } catch (error) {
       const reasons = ['INVALID_FIELD_MAP', 'INVALID_TASK_STATUS', 'INVALID_TASK_DATE', 'INVALID_TASK_ID', 'TASK_LIMIT_EXCEEDED', 'INVALID_PAGINATION', 'FEISHU_AUTH_FAILED', 'FEISHU_READ_FAILED']
       const reason = reasons.includes(error.message) ? error.message : 'UPSTREAM_UNAVAILABLE'

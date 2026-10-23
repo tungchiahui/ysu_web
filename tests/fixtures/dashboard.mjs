@@ -18,8 +18,9 @@ export function dashboardFixtures(now = Date.now()) {
   }))
   return { records, data: {
     demo: true, tasks: normalizeDashboardRecords(records), updatedAt: now, stale: false, refreshSeconds: 30,
-    github: { enabled: true, unavailable: false, updatedAt: now,
-      contributors: [{ name: 'example-developer', count: 24, avatar: '', href: 'https://github.com/example' }],
-      events: Array.from({ length: 7 }, (_, i) => ({ id: `demo-event-${i}`, repo: 'example/robot', actor: 'example-developer', action: '推送了代码', at: now - i * 60_000, href: 'https://github.com/example' })) }
+    development: { enabled: true, unavailable: false, updatedAt: now,
+      contributors: [{ key: 'demo-developer', name: 'example-developer', count: 24, avatar: '', href: 'https://gitcode.com/example' }],
+      sources: [{ key: 'gitcode:example/robot', repo: 'example/robot', href: 'https://gitcode.com/example/robot', unavailable: false, contributionsUnavailable: false, eventsUnavailable: false, updatedAt: now }],
+      events: Array.from({ length: 7 }, (_, i) => ({ id: `demo-event-${i}`, repo: 'example/robot', actor: 'example-developer', action: '推送了代码', at: now - i * 60_000, href: 'https://gitcode.com/example/robot' })) }
   } }
 }
