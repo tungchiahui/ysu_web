@@ -19,13 +19,17 @@ function diagnostic(error) {
   return diagnosticCodes.has(error?.message) ? error.message : 'READ_FAILED'
 }
 
+function repositoryPath(repo) {
+  if (typeof repo !== 'string' || repo.length > 300 || !/^[a-z\d_.-]+\/[a-z\d_.-]+$/i.test(repo) || repo.split('/').some(part => part === '.' || part === '..')) throw new Error('INVALID_GITCODE_REPOS')
+  return { key: repo.toLowerCase(), repo, href: `https://gitcode.com/${repo}` }
+}
+
 function repository(value) {
   if (typeof value !== 'string' || value.length > 300 || !/^https:\/\//.test(value)) throw new Error('INVALID_GITCODE_REPOS')
   const url = new URL(value)
   if (url.hostname !== 'gitcode.com' || url.username || url.password || url.port || url.search || url.hash) throw new Error('INVALID_GITCODE_REPOS')
   const repo = url.pathname.replace(/\/$/, '').replace(/\.git$/, '').slice(1)
-  if (!/^[a-z\d_.-]+\/[a-z\d_.-]+$/i.test(repo) || repo.split('/').some(part => part === '.' || part === '..')) throw new Error('INVALID_GITCODE_REPOS')
-  return { key: repo.toLowerCase(), repo, href: `https://gitcode.com/${repo}` }
+  return repositoryPath(repo)
 }
 
 export function dashboardGitcodeRepositories(env) {
@@ -172,8 +176,11 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
             if (!Array.isArray(value) || value.length > 100) throw new Error('INVALID_ORGANIZATION_REPOS')
             const pageKeys = []
             for (const row of value) {
-              if (!row || typeof row.full_name !== 'string' || (row.repo_type !== undefined && row.repo_type !== 'code')) throw new Error('INVALID_ORGANIZATION_REPO')
-              const source = repository(`https://gitcode.com/${row.full_name}`)
+              if (!row || (row.repo_type !== undefined && row.repo_type !== 'code')) throw new Error('INVALID_ORGANIZATION_REPO')
+              // API 结构化路径用于定位项目，不将展示名称当地址，也无需再次解析完整URL。
+              const structured = row.path !== undefined || row.namespace?.path !== undefined
+              if (structured && (typeof row.path !== 'string' || typeof row.namespace?.path !== 'string')) throw new Error('INVALID_ORGANIZATION_REPO')
+              const source = repositoryPath(structured ? `${row.namespace.path}/${row.path}` : row.full_name)
               if (source.repo.split('/')[0].toLowerCase() !== org.toLowerCase()) throw new Error('INVALID_ORGANIZATION_NAMESPACE')
               if (row.fork !== undefined && typeof row.fork !== 'boolean') throw new Error('INVALID_ORGANIZATION_REPO')
               pageKeys.push(source.key)

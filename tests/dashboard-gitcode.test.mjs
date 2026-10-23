@@ -477,3 +477,26 @@ test('兼容字符串HTTP状态且不依赖ok或自定义Error属性，区分不
   assert.equal(invalid.organization.reason, 'INVALID_GITCODE_REPOS')
   assert.equal(invalid.organization.failureStage, 'PARSE')
 })
+
+test('组织接口以namespace.path和path定位仓库，展示full_name不作URL，结构化路径不可跨组织或降级绕过校验', async () => {
+  const env = { DASHBOARD_GITCODE_ORG: 'team' }
+  const read = createDashboardGitcode({ json: async url => url.includes('/orgs/')
+    ? [{ id: 1, full_name: '战队 / 项目展示名称', namespace: { path: 'team' }, path: 'robot', fork: false },
+      { id: 2, full_name: 'https://gitcode.com/team/another', namespace: { path: 'team' }, path: 'another', fork: true }]
+    : url.includes('/contributors') ? [{ name: 'Author', contributions: 3 }] : { events: [] } })
+  const data = await read(env)
+  assert.equal(data.unavailable, false)
+  assert.equal(data.organization.includedCount, 2)
+  assert.deepEqual(data.sources.map(source => source.repo), ['team/another', 'team/robot'])
+  assert(data.sources.every(source => source.href === `https://gitcode.com/${source.repo}`))
+  for (const row of [
+    { full_name: 'team/safe', namespace: { path: 'foreign' }, path: 'robot' },
+    { full_name: 'team/safe', namespace: { path: 'team' }, path: '../robot' },
+    { full_name: 'team/safe', path: 'robot' }
+  ]) {
+    const failed = await createDashboardGitcode({ json: async () => [row] })(env)
+    assert.equal(failed.organization.unavailable, true)
+    assert.equal(failed.organization.failureStage, 'PARSE')
+    assert.equal(failed.sources.length, 0)
+  }
+})
