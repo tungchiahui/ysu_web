@@ -61,8 +61,12 @@ function createScopedService({ fetcher, now }) {
         throw error
       }
       if (result.status === 204) return []
-      return await result.json()
-    } finally { clearTimeout(timer) }
+      try { return await result.json() }
+      catch (error) {
+        if (error?.name === 'SyntaxError') throw error
+        throw new Error('UPSTREAM_BODY_FAILED')
+      }
+    } finally { if (timer !== undefined) clearTimeout(timer) }
   }
 
   async function tenantToken(env) {

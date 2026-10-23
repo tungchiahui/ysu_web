@@ -425,12 +425,17 @@ test('联调区分重定向、非JSON、请求头和传输异常，禁止跟随�
 
 test('精简边缘运行时无需AbortSignal事件监听，父信号直达请求且预算仍能结束慢读取', async () => {
   const Original = globalThis.AbortController
+  const originalClearTimeout = globalThis.clearTimeout
   let aborted = 0
   class MinimalController {
     signal = { aborted: false }
     abort() { this.signal.aborted = true; aborted++ }
   }
   globalThis.AbortController = MinimalController
+  globalThis.clearTimeout = id => {
+    if (id === undefined) throw new TypeError('timer id must be defined')
+    return originalClearTimeout(id)
+  }
   try {
     const env = { DASHBOARD_ENABLED: 'true', DASHBOARD_PUBLIC: 'true', FEISHU_APP_ID: 'test', FEISHU_APP_SECRET: 'test',
       FEISHU_BITABLE_APP_TOKEN: 'test', FEISHU_BITABLE_TABLE_ID: 'test', DASHBOARD_GITCODE_ORG: 'team' }
@@ -453,5 +458,5 @@ test('精简边缘运行时无需AbortSignal事件监听，父信号直达请求
     assert(Date.now() - start < 1000)
     assert.equal(failed.organization.reason, 'SYNC_BUDGET_EXCEEDED')
     assert.equal(aborted, 1)
-  } finally { globalThis.AbortController = Original }
+  } finally { globalThis.AbortController = Original; globalThis.clearTimeout = originalClearTimeout }
 })

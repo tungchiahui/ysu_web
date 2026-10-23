@@ -7,7 +7,8 @@ const empty = () => ({ enabled: false, unavailable: false, contributors: [], eve
 const diagnosticCodes = new Set(['SYNC_BUDGET_EXCEEDED', 'INVALID_ORGANIZATION_REPOS', 'INVALID_ORGANIZATION_REPO',
   'INVALID_ORGANIZATION_NAMESPACE', 'INVALID_ORGANIZATION_PAGINATION', 'ORGANIZATION_REPO_LIMIT',
   'INVALID_CONTRIBUTORS', 'INVALID_CODE_EVENTS', 'INVALID_CODE_PERSON', 'CONFLICTING_CODE_PERSON',
-  'ABORT_LISTENERS_UNSUPPORTED', 'INVALID_TOKEN_FORMAT', 'UPSTREAM_FETCH_FAILED', 'INVALID_REQUEST_HEADERS', 'UPSTREAM_REDIRECT'])
+  'ABORT_LISTENERS_UNSUPPORTED', 'ABORT_SIGNAL_UNSUPPORTED', 'INVALID_TOKEN_FORMAT', 'UPSTREAM_FETCH_FAILED',
+  'UPSTREAM_BODY_FAILED', 'INVALID_REQUEST_HEADERS', 'UPSTREAM_REDIRECT'])
 function diagnostic(error) {
   if (Number.isInteger(error?.status) && error.status >= 300 && error.status <= 599) return `HTTP_${error.status}`
   if (error?.name === 'SyntaxError') return 'INVALID_JSON_RESPONSE'
@@ -134,6 +135,7 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
     async function request(url) {
       const signal = controller.signal
       if (env.DASHBOARD_GITCODE_TOKEN && !/^[\x21-\x7e]{1,4096}$/.test(env.DASHBOARD_GITCODE_TOKEN)) throw new Error('INVALID_TOKEN_FORMAT')
+      if (!signal) throw new Error('ABORT_SIGNAL_UNSUPPORTED')
       if (signal.aborted) throw new Error('SYNC_BUDGET_EXCEEDED')
       return Promise.race([json(url, { headers, signal, redirect: 'manual' }), interrupted])
     }
