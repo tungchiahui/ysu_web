@@ -49,7 +49,11 @@ function createScopedService({ fetcher, now }) {
     else options.signal?.addEventListener('abort', abort, { once: true })
     try {
       const result = await fetcher(url, { ...options, signal: controller.signal, redirect: 'error' })
-      if (!result.ok) throw new Error(result.status === 401 ? 'UPSTREAM_UNAUTHORIZED' : 'UPSTREAM_UNAVAILABLE')
+      if (!result.ok) {
+        const error = new Error(result.status === 401 ? 'UPSTREAM_UNAUTHORIZED' : 'UPSTREAM_UNAVAILABLE')
+        error.status = result.status
+        throw error
+      }
       if (result.status === 204) return []
       return await result.json()
     } finally { clearTimeout(timer); options.signal?.removeEventListener('abort', abort) }

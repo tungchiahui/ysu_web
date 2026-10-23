@@ -367,3 +367,28 @@ test('缓存到期但尚未轮到刷新时，保留上次结果并明确等待�
   assert.equal(partial.syncing, true)
   assert(partial.sources.slice(2).every(source => source.pending && source.updatedAt === instant))
 })
+
+test('真实接入诊断只返回HTTP状态与固定错误码，不返回凭证或上游错误正文', async () => {
+  const env = { DASHBOARD_ENABLED: 'true', DASHBOARD_PUBLIC: 'true', FEISHU_APP_ID: 'test', FEISHU_APP_SECRET: 'test',
+    FEISHU_BITABLE_APP_TOKEN: 'test', FEISHU_BITABLE_TABLE_ID: 'test', DASHBOARD_GITCODE_ORG: 'team', DASHBOARD_GITCODE_TOKEN: 'diagnostic-secret-test-only' }
+  for (const status of [401, 403, 429, 502]) {
+    const service = createDashboardService({ fetcher: async url => String(url).includes('open.feishu.cn')
+      ? Response.json(String(url).includes('/auth/') ? { code: 0, tenant_access_token: 'test-tenant' } : { code: 0, data: { items: [], has_more: false } })
+      : new Response('private upstream body diagnostic-secret-test-only', { status }) })
+    const response = await service({ request: new Request('https://example.test/api/dashboard'), env })
+    const data = await response.json()
+    assert.equal(response.status, 200)
+    assert.deepEqual(data.tasks, [])
+    assert.equal(data.development.organization.authenticated, true)
+    assert.equal(data.development.organization.reason, `HTTP_${status}`)
+    assert(!JSON.stringify(data).includes('diagnostic-secret-test-only'))
+    assert(!JSON.stringify(data).includes('private upstream body'))
+  }
+  const read = createDashboardGitcode({ json: async () => { throw new Error('private error text diagnostic-secret-test-only') } })
+  const data = await read({ DASHBOARD_GITCODE_ORG: 'team' })
+  assert.equal(data.organization.authenticated, false)
+  assert.equal(data.organization.reason, 'READ_FAILED')
+  assert(!JSON.stringify(data).includes('private error text'))
+  const invalid = await createDashboardGitcode({ json: async () => ({ unexpected: true }) })(env)
+  assert.equal(invalid.organization.reason, 'INVALID_ORGANIZATION_REPOS')
+})

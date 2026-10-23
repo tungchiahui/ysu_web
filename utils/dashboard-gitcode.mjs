@@ -4,6 +4,13 @@ const API = 'https://api.gitcode.com/api/v5'
 const MAX_AGE = 24 * 60 * 60_000
 const cleanName = (value, fallback) => typeof value === 'string' && value.trim() && !value.includes('@') ? value.trim().slice(0, 100) : fallback
 const empty = () => ({ enabled: false, unavailable: false, contributors: [], events: [], sources: [] })
+const diagnosticCodes = new Set(['SYNC_BUDGET_EXCEEDED', 'INVALID_ORGANIZATION_REPOS', 'INVALID_ORGANIZATION_REPO',
+  'INVALID_ORGANIZATION_NAMESPACE', 'INVALID_ORGANIZATION_PAGINATION', 'ORGANIZATION_REPO_LIMIT',
+  'INVALID_CONTRIBUTORS', 'INVALID_CODE_EVENTS', 'INVALID_CODE_PERSON', 'CONFLICTING_CODE_PERSON'])
+function diagnostic(error) {
+  if (Number.isInteger(error?.status) && error.status >= 400 && error.status <= 599) return `HTTP_${error.status}`
+  return diagnosticCodes.has(error?.message) ? error.message : 'READ_FAILED'
+}
 
 function repository(value) {
   if (typeof value !== 'string' || value.length > 300 || !/^https:\/\//.test(value)) throw new Error('INVALID_GITCODE_REPOS')
@@ -134,9 +141,9 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
         const fresh = { value, at: now(), next: now() + ttl, unavailable: false }
         cache.set(key, fresh)
         return fresh
-      }).catch(() => {
+      }).catch(error => {
         const stale = entry && entry.at !== undefined && now() - entry.at <= MAX_AGE
-        const failed = { value: stale ? entry.value : null, at: stale ? entry.at : undefined, next: now() + 60_000, unavailable: true }
+        const failed = { value: stale ? entry.value : null, at: stale ? entry.at : undefined, next: now() + 60_000, unavailable: true, reason: diagnostic(error) }
         cache.set(key, failed)
         return failed
       }).finally(() => pending.delete(key)))
@@ -180,6 +187,7 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
       repos = repos.filter(source => !excluded.has(source.key))
       const organization = org ? {
         name: org, href: `https://gitcode.com/${org}`, unavailable: discovery.unavailable,
+        authenticated: Boolean(env.DASHBOARD_GITCODE_TOKEN), reason: discovery.reason,
         updatedAt: discovery.at, discoveredCount: discovery.value ? discoveredCount : undefined,
         includedCount: discovery.value ? repos.length : undefined, excludedCount: discovery.value ? discoveredCount - repos.length : undefined
       } : undefined
@@ -223,6 +231,7 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
         sources.push({ key: source.key, repo: source.repo, href: source.href, fork: source.fork,
           pending: !rows || !recent || rows.next <= now() || recent.next <= now(), unavailable: Boolean(rows?.unavailable || recent?.unavailable),
           contributionsUnavailable: !rows || rows.unavailable, eventsUnavailable: !recent || recent.unavailable,
+          contributionsReason: rows?.reason, eventsReason: recent?.reason,
           updatedAt: stamps.length ? Math.min(...stamps) : undefined })
         for (const person of rows?.value || []) {
           const existing = people.get(person.identity)
