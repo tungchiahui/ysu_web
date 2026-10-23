@@ -255,7 +255,7 @@ const resizeScreen = () => {
   // 先按固定大屏样式实测，避免普通模式较大的间距误判为没有空间。
   dashboardPage.value?.classList.toggle('is-fixed-screen', candidate)
   const occupied = [...(dashboardPage.value?.children || [])].filter(element =>
-    element.matches('.dashboard-heading, .dashboard-notice, .dashboard-filters, .dashboard-stats, .dashboard-competitions, .dashboard-development'))
+    element.matches('.dashboard-heading, .dashboard-notice, .dashboard-toolbar, .dashboard-stats, .dashboard-competitions, .dashboard-development'))
     .reduce((total, element) => {
       const style = getComputedStyle(element)
       return total + element.getBoundingClientRect().height + (Number.parseFloat(style.marginTop) || 0) + (Number.parseFloat(style.marginBottom) || 0)
@@ -369,19 +369,24 @@ onBeforeUnmount(() => {
     <template v-else>
       <p v-if="data.demo" class="dashboard-notice">本地演示数据</p>
       <p v-if="updateInterrupted" role="status" class="dashboard-notice dashboard-warning">{{ message || '更新暂时中断，正在显示上次结果。' }} 上次更新 {{ formatTime(data.updatedAt) }}</p>
-      <div class="dashboard-filters">
-        <div class="dashboard-query"><label for="task-search" class="visually-hidden">搜索任务</label><input id="task-search" v-model="search" type="search" placeholder="搜索任务、执行人或备注"><label for="task-group" class="visually-hidden">组别</label><select id="task-group" v-model="selectedGroup"><option value="all">全部组别</option><option v-for="group in groups" :key="group" :value="group">{{ group }}</option></select></div>
-        <p class="dashboard-update"><span :class="{ interrupted: updateInterrupted }" />{{ updateInterrupted ? '等待更新' : '自动更新中' }} · {{ formatTime(data.updatedAt) }} <button type="button" class="dashboard-text-button" @click="resetDisplay">重置显示</button></p>
+      <div class="dashboard-toolbar">
+        <div class="dashboard-filters">
+          <div class="dashboard-query"><label for="task-search" class="visually-hidden">搜索任务</label><input id="task-search" v-model="search" type="search" placeholder="搜索任务、执行人或备注"><label for="task-group" class="visually-hidden">组别</label><select id="task-group" v-model="selectedGroup"><option value="all">全部组别</option><option v-for="group in groups" :key="group" :value="group">{{ group }}</option></select></div>
+          <p class="dashboard-update"><span :class="{ interrupted: updateInterrupted }" />{{ updateInterrupted ? '等待更新' : '自动更新中' }} · {{ formatTime(data.updatedAt) }} <button type="button" class="dashboard-text-button" @click="resetDisplay">重置显示</button></p>
+        </div>
+        <section class="dashboard-stats" aria-label="任务概览">
+          <div><span>待办任务</span><strong>{{ counts.todo + counts.overdue }}</strong></div>
+          <div class="dashboard-overdue"><span>已逾期</span><strong>{{ counts.overdue }}</strong></div>
+          <div><span>已完成</span><strong>{{ counts.done }}</strong><button type="button" class="dashboard-text-button dashboard-trend-trigger" aria-label="查看完成趋势" @click="selectedTaskId = null; showCompletion = true">完成趋势 →</button></div>
+        </section>
       </div>
-      <section class="dashboard-stats" aria-label="任务概览">
-        <div><span>待办任务</span><strong>{{ counts.todo + counts.overdue }}</strong></div>
-        <div class="dashboard-overdue"><span>已逾期</span><strong>{{ counts.overdue }}</strong></div>
-        <div><span>已完成</span><strong>{{ counts.done }}</strong><button type="button" class="dashboard-text-button dashboard-trend-trigger" aria-label="查看完成趋势" @click="selectedTaskId = null; showCompletion = true">完成趋势 →</button></div>
+      <section class="dashboard-stats dashboard-deadline-strip" aria-label="最近截止任务">
         <div class="dashboard-countdown">
           <div class="dashboard-deadline-heading"><span>距离最近截止</span><div v-if="nextDeadline" class="dashboard-task-flags"><span v-if="dashboardUrgency(nextDeadline, currentTime)" class="dashboard-urgency" :class="dashboardUrgency(nextDeadline, currentTime)!.level">{{ dashboardUrgency(nextDeadline, currentTime)!.label }}</span><span class="dashboard-deadline-priority" :class="nextDeadline.priority">{{ priorityLabels[nextDeadline.priority] }}</span></div></div>
           <strong>{{ countdown }}</strong>
           <template v-if="nextDeadline">
             <p class="dashboard-deadline-title"><button type="button" class="dashboard-task-title" :aria-label="`查看任务详情：${nextDeadline.title}`" @click="openTask(nextDeadline.id)">{{ nextDeadline.title }}</button></p>
+            <details class="dashboard-deadline-more" @toggle="resizeScreen"><summary>执行人与截止信息</summary>
             <div class="dashboard-deadline-people">
               <span class="dashboard-deadline-label">执行人</span>
               <DashboardMember v-for="person in nextDeadline.assignees" :key="person.key" :person="person" :profile="memberProfile(person.name)" />
@@ -392,8 +397,8 @@ onBeforeUnmount(() => {
               <span v-if="nextDeadline.group" :title="nextDeadline.group">{{ nextDeadline.group }}</span>
             </div>
             <div v-if="nextDeadlines.length > 1" class="dashboard-deadline-switch"><span>同时截止共 {{ nextDeadlines.length }} 项 · {{ nextDeadlineIndex + 1 }}/{{ nextDeadlines.length }}</span><div><button type="button" aria-label="上一项最近任务" @click="rotateDeadline(-1)">‹</button><button type="button" aria-label="下一项最近任务" @click="rotateDeadline(1)">›</button><button v-if="screen" type="button" :aria-label="autoRotate ? '暂停最近任务轮播' : '继续最近任务轮播'" :aria-pressed="autoRotate" @click="autoRotate = !autoRotate">{{ autoRotate ? '暂停' : '轮播' }}</button></div></div>
+            </details>
           </template>
-          <p v-else class="dashboard-deadline-empty">当前筛选下没有尚未到期的任务</p>
         </div>
       </section>
 
