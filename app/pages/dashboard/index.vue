@@ -330,7 +330,20 @@ onBeforeUnmount(() => {
         <span class="dashboard-insignia"><img :src="site.logo" :alt="site.logoAlt" width="96" height="96"></span>
         <div><strong class="dashboard-team-name">{{ site.university }}{{ site.shortName }}</strong><span class="dashboard-brand-caption">{{ site.englishName }}</span></div>
       </NuxtLink>
-      <div class="dashboard-title-block"><p class="eyebrow">Mission Control</p><h1>任务看板</h1></div>
+      <div class="dashboard-heading-center">
+        <div class="dashboard-title-block"><p class="eyebrow">Mission Control</p><h1>任务看板</h1></div>
+        <section v-if="eventCountdowns.length" class="dashboard-heading-competitions" aria-label="赛事倒计时">
+          <article v-for="event in eventCountdowns" :key="event.name" class="dashboard-heading-event" :class="{ 'is-reached': event.state === 'reached' }">
+            <h2><img src="/images/competitions/robomaster.png" alt="RoboMaster" width="1021" height="663">{{ event.name }}</h2>
+            <div class="dashboard-heading-event-count">
+              <template v-if="event.state === 'counting'"><span class="visually-hidden">{{ event.dateStatus === 'historical' ? '距离参考日期' : '距离赛事' }}</span><strong>{{ event.days }}<small> 天</small></strong><span>{{ event.clock }}</span></template>
+              <strong v-else>{{ event.state === 'pending' ? '日期待定' : event.state === 'waiting' ? '正在校时…' : '已到达节点' }}</strong>
+            </div>
+            <span v-if="event.dateStatus !== 'pending'" class="dashboard-heading-event-status" :class="event.dateStatus">{{ event.dateStatus === 'historical' ? `去年同期参考（${event.referenceYear}）` : event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span>
+            <time v-if="event.target !== null" :datetime="event.startsAt || undefined" :title="`${formatEventTime(event.target)} · 北京时间${event.dateStatus === 'historical' ? ' · 同期推算' : ''}`">{{ formatTime(event.target) }} · 北京时间</time>
+          </article>
+        </section>
+      </div>
       <div class="dashboard-header-controls">
         <p class="dashboard-clock">{{ clock || '任务进展，一目了然。' }}</p>
         <div class="dashboard-actions">
@@ -400,22 +413,6 @@ onBeforeUnmount(() => {
             </details>
           </template>
         </div>
-      </section>
-
-      <section v-if="eventCountdowns.length" class="dashboard-competitions" aria-label="赛事倒计时">
-        <article v-for="event in eventCountdowns" :key="event.name" class="dashboard-panel dashboard-competition" :class="{ 'is-reached': event.state === 'reached' }">
-          <div class="dashboard-competition-info">
-            <div class="dashboard-competition-heading">
-              <img class="dashboard-competition-logo" src="/images/competitions/robomaster.png" alt="RoboMaster" width="1021" height="663">
-              <h2>{{ event.name }}<span v-if="event.dateStatus !== 'pending'" class="dashboard-event-status" :class="event.dateStatus">{{ event.dateStatus === 'historical' ? `去年同期参考（${event.referenceYear}）` : event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span></h2>
-            </div>
-            <time v-if="event.target !== null" :datetime="event.startsAt || undefined">{{ formatEventTime(event.target) }} · 北京时间{{ event.dateStatus === 'historical' ? ' · 同期推算' : '' }}</time>
-          </div>
-          <div class="dashboard-competition-remaining">
-            <template v-if="event.state === 'counting'"><span class="dashboard-event-label">{{ event.dateStatus === 'historical' ? '距离参考日期' : '距离赛事' }}</span><strong>{{ event.days }}<small> 天</small></strong><span class="dashboard-event-clock">{{ event.clock }}</span></template>
-            <strong v-else class="dashboard-event-message">{{ event.state === 'pending' ? '日期待定' : event.state === 'waiting' ? '正在校时…' : '已到达节点' }}</strong>
-          </div>
-        </article>
       </section>
 
       <div class="dashboard-grid">
