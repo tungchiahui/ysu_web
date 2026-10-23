@@ -38,10 +38,11 @@ function timestamp(value) {
 }
 
 // 根据可用区域计算容量，尺寸与卡片样式的最小可读尺寸保持一致。
-export function dashboardGridLayout(width, height, gap = 10, fontSize = 16) {
+export function dashboardGridLayout(width, height, gap = 10, fontSize = 16, cardHeight) {
   const scale = Math.max(1, fontSize / 16)
   const columns = Math.max(1, Math.floor((Math.max(0, width) + gap) / (360 * scale + gap)))
-  const rows = Math.max(1, Math.floor((Math.max(0, height) + gap) / (260 * scale + gap)))
+  const rowHeight = Number.isFinite(cardHeight) && cardHeight > 0 ? cardHeight : 260 * scale
+  const rows = Math.max(1, Math.floor((Math.max(0, height) + gap) / (rowHeight + gap)))
   return { columns, rows, size: columns * rows }
 }
 

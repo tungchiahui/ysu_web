@@ -12,6 +12,17 @@ export function dashboardUrgency(task, now) {
   return null
 }
 
+// 共用页面时钟：未来向上取整避免到期前显示零；逾期按已过整秒计时。
+export function dashboardTaskCountdown(task, now) {
+  if (task.status === 'done') return ''
+  if (!Number.isFinite(task.deadline) || task.deadline <= 0) return '未设置截止'
+  if (!Number.isFinite(now) || now <= 0) return '正在校时…'
+  const overdue = now >= task.deadline
+  const seconds = overdue ? Math.floor((now - task.deadline) / 1000) : Math.ceil((task.deadline - now) / 1000)
+  const pad = value => String(value).padStart(2, '0')
+  return `${overdue ? '已逾期' : '剩余'} ${Math.floor(seconds / 86400)}天 ${pad(Math.floor(seconds / 3600) % 24)}:${pad(Math.floor(seconds / 60) % 60)}:${pad(seconds % 60)}`
+}
+
 export function dashboardNextDeadlines(tasks, now) {
   const pending = tasks.filter(task => task.status !== 'done' && Number.isFinite(task.deadline) && task.deadline > now)
   if (!pending.length) return []

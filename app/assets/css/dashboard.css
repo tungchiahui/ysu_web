@@ -674,3 +674,114 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
   .dashboard-heading-event-count strong { font-size: 1.2rem; }
   .dashboard-heading-event-count > span { font-size: .7rem; }
 }
+
+/* 本地验收：限制标题组宽度，赛事等宽且内容居中，消除左右松紧不一。 */
+.dashboard-heading-center { width: min(100%, 720px); justify-self: center; gap: 20px; }
+.dashboard-heading-event { display: grid; grid-template-rows: minmax(2.7em, 1fr) repeat(3, auto); align-self: stretch; text-align: center; border-left: 0; padding: 0 12px; }
+.dashboard-heading-event:first-child { border-right: 1px solid rgba(57, 230, 244, .18); }
+.dashboard-heading-event:nth-child(2) { border-left: 1px solid rgba(57, 230, 244, .18); }
+.dashboard-heading-event h2, .dashboard-heading-event-count { justify-content: center; }
+.dashboard-task-timing { display: flex; flex-direction: column; justify-content: center; min-width: 0; gap: 1px; font-family: var(--dashboard-mono); font-variant-numeric: tabular-nums; }
+.has-publisher .dashboard-task-timing { height: var(--dashboard-avatar-size); }
+.dashboard-task-remaining { font-size: calc(var(--dashboard-text) * .8); line-height: 1; color: var(--cyan); white-space: nowrap; }
+.dashboard-task-timing.today .dashboard-task-remaining, .dashboard-task-timing.soon .dashboard-task-remaining, .dashboard-task-timing.upcoming .dashboard-task-remaining { color: var(--gold); }
+.dashboard-task-timing.overdue .dashboard-task-remaining { color: #ff927e; }
+.dashboard-task-timing.done .dashboard-task-remaining { color: var(--green); }
+.dashboard-task-deadline { color: var(--muted); font-size: max(12px, calc(var(--dashboard-text) * .72)); line-height: 1; white-space: nowrap; }
+.dashboard-task-meta:not(.has-publisher) { margin-top: 5px; padding-top: 3px; }
+@media (max-width: 760px) {
+  .dashboard-heading-center { width: auto; }
+  .dashboard-heading-event:first-child { border-right: 0; }
+  .dashboard-heading-event h2 { align-self: stretch; }
+}
+
+.dashboard-task-meta { gap: 1px 12px; padding-top: 5px; }
+
+/* 本地验收：横向赛事卡，信息在外、时间在内，内部布局镜像对称。 */
+.dashboard-page .dashboard-heading { grid-template-columns: minmax(180px, 1fr) minmax(0, 3.7fr) minmax(220px, 1fr); }
+.dashboard-heading-center { width: min(100%, 1180px); }
+.dashboard-heading-event { --event-accent: var(--cyan); display: grid; grid-template-columns: minmax(0, 1fr) max-content; grid-template-rows: auto; align-items: center; gap: 14px; padding: 12px 16px; border: 1px solid rgba(57, 230, 244, .28); border-inline-start: 3px solid var(--event-accent); background: linear-gradient(110deg, rgba(21, 100, 133, .18), rgba(3, 17, 30, .55)); }
+.dashboard-heading-event:first-child { border-right: 1px solid rgba(57, 230, 244, .28); }
+.dashboard-heading-event:nth-child(2) { --event-accent: var(--gold); grid-template-columns: max-content minmax(0, 1fr); border-left: 1px solid rgba(255, 179, 92, .28); border-right: 3px solid var(--event-accent); background: linear-gradient(250deg, rgba(133, 91, 21, .15), rgba(3, 17, 30, .55)); }
+.dashboard-heading-event-info { min-width: 0; text-align: left; }
+.dashboard-heading-event h2 { justify-content: flex-start; }
+.dashboard-heading-event-count { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 2px; color: var(--event-accent); }
+.dashboard-heading-event-count strong { font-size: clamp(1.6rem, 1.5vw, 2rem); }
+.dashboard-heading-event:nth-child(2) .dashboard-heading-event-info { grid-column: 2; grid-row: 1; text-align: right; }
+.dashboard-heading-event:nth-child(2) h2 { flex-direction: row-reverse; }
+.dashboard-heading-event:nth-child(2) .dashboard-heading-event-count { grid-column: 1; grid-row: 1; align-items: flex-start; }
+.dashboard-heading-event-status { margin-top: 5px; }
+@media (min-width: 761px) and (max-width: 1399px) {
+  .dashboard-page .dashboard-heading { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .dashboard-heading-center { display: contents; }
+  .dashboard-page .dashboard-heading-center .dashboard-title-block { grid-column: 2; grid-row: 1; }
+  .dashboard-page .dashboard-header-controls { grid-column: 3; grid-row: 1; justify-self: end; }
+  .dashboard-heading-competitions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1 / -1; gap: 16px; }
+  .dashboard-heading-event:first-child, .dashboard-heading-event:nth-child(2) { grid-column: auto; grid-row: auto; }
+}
+@media (max-width: 760px) {
+  .dashboard-page .dashboard-heading { grid-template-columns: minmax(0, 1fr) auto; }
+  .dashboard-heading-event:first-child, .dashboard-heading-event:nth-child(2) { padding: 10px 12px; }
+  .dashboard-heading-event { gap: 10px; }
+  .dashboard-heading-event h2 { align-self: auto; }
+  .dashboard-heading-event-count strong { font-size: 1.6rem; }
+}
+@media (max-width: 600px) { .dashboard-heading-competitions { grid-template-columns: 1fr; } }
+
+/* 分页卡片使用紧凑统一行高；屏幕变高增加行数，不拉长卡片。 */
+.is-paginated .dashboard-task-list { grid-template-rows: none; grid-auto-rows: calc(var(--dashboard-text) * 14); align-content: start; }
+.is-paginated .dashboard-task { height: 100%; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; overflow: hidden; }
+.is-paginated .dashboard-task-top, .is-paginated .dashboard-assignees, .is-paginated .dashboard-task-meta { flex: 0 0 auto; }
+.is-paginated .dashboard-task h3 { flex: 0 0 auto; }
+.is-paginated .dashboard-assignees { flex-wrap: nowrap; overflow: hidden; }
+.is-paginated .dashboard-assignees .dashboard-person { flex-shrink: 1; }
+.is-paginated .dashboard-assignees .dashboard-person > span:last-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.is-paginated .dashboard-note { flex: 0 1 auto; min-height: 0; -webkit-line-clamp: 1; }
+.is-paginated .dashboard-task-meta { margin-top: auto; }
+.dashboard-page .dashboard-more-people { flex: 0 0 auto; padding: 2px 5px; font-size: .75em; }
+
+/* 大屏沿用既有横向外框，按卡片实际宽度放大内容并收紧内边距。 */
+@media (min-width: 1200px) {
+  .is-screen .dashboard-heading-event { container-type: inline-size; padding: 5px 12px; gap: 12px; }
+  .is-screen .dashboard-heading-event h2 { font-size: clamp(18px, 4.4cqw, 24px); line-height: 1.3; gap: 8px; }
+  .is-screen .dashboard-heading-event h2 img { width: clamp(28px, 6cqw, 34px); height: clamp(20px, 4.3cqw, 24px); }
+  .is-screen .dashboard-heading-event-status, .is-screen .dashboard-heading-event time { font-size: clamp(12px, 2.8cqw, 15px); line-height: 1.35; }
+  .is-screen .dashboard-heading-event-status { margin-top: 4px; }
+  .is-screen .dashboard-heading-event-count { gap: 4px; }
+  .is-screen .dashboard-heading-event-count strong { font-size: clamp(34px, 9cqw, 46px); line-height: 1.05; }
+  .is-screen .dashboard-heading-event-count small { font-size: clamp(13px, 3cqw, 16px); }
+  .is-screen .dashboard-heading-event-count > span:not(.visually-hidden) { font-size: clamp(16px, 3.6cqw, 20px); line-height: 1.15; }
+}
+
+/* 大屏三列横向展开：名称｜参考与日期｜天数和时钟，右卡镜像。 */
+@media (min-width: 1200px) {
+  .is-screen.dashboard-page .dashboard-heading { grid-template-columns: clamp(240px, 11vw, 320px) minmax(0, 1fr) clamp(240px, 11vw, 320px); }
+  .is-screen .dashboard-heading-center { width: 100%; }
+  .is-screen .dashboard-heading-event { grid-template-columns: minmax(0, 1.25fr) minmax(0, .85fr) max-content; }
+  .is-screen .dashboard-heading-event-info { display: contents; }
+  .is-screen .dashboard-heading-event h2 { grid-column: 1; grid-row: 1; font-size: clamp(18px, 3cqw, 32px); }
+  .is-screen .dashboard-heading-event-meta { grid-column: 2; grid-row: 1; text-align: center; }
+  .is-screen .dashboard-heading-event-status, .is-screen .dashboard-heading-event time { font-size: clamp(12px, 1.9cqw, 20px); }
+  .is-screen .dashboard-heading-event-status { margin: 0; }
+  .is-screen .dashboard-heading-event-count { grid-column: 3; grid-row: 1; flex-direction: row; flex-wrap: nowrap; align-items: baseline; justify-content: flex-end; gap: 10px; white-space: nowrap; }
+  .is-screen .dashboard-heading-event-count strong { font-size: clamp(34px, 5.5cqw, 64px); }
+  .is-screen .dashboard-heading-event-count small { font-size: clamp(13px, 2cqw, 20px); }
+  .is-screen .dashboard-heading-event-count > span:not(.visually-hidden) { font-size: clamp(16px, 3.3cqw, 32px); }
+  .is-screen .dashboard-heading-event:nth-child(2) { grid-template-columns: max-content minmax(0, .85fr) minmax(0, 1.25fr); }
+  .is-screen .dashboard-heading-event:nth-child(2) h2 { grid-column: 3; }
+  .is-screen .dashboard-heading-event:nth-child(2) .dashboard-heading-event-count { grid-column: 1; justify-content: flex-start; align-items: baseline; }
+}
+
+@media (min-width: 1200px) {
+  .is-screen .dashboard-heading-event { grid-template-columns: minmax(0, 1.6fr) minmax(148px, .7fr) max-content; }
+  .is-screen .dashboard-heading-event:nth-child(2) { grid-template-columns: max-content minmax(148px, .7fr) minmax(0, 1.6fr); }
+  .is-screen .dashboard-heading-event:first-child .dashboard-heading-event-count { flex-direction: row-reverse; }
+}
+/* 较窄桌面让两张卡使用标题下一整行，保证三列内容不互相挤压。 */
+@media (min-width: 1200px) and (max-width: 1799px) {
+  .is-screen .dashboard-heading-center { display: contents; }
+  .is-screen .dashboard-heading-center .dashboard-title-block { grid-column: 2; grid-row: 1; }
+  .is-screen .dashboard-header-controls { grid-column: 3; grid-row: 1; }
+  .is-screen .dashboard-heading-competitions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1 / -1; gap: 16px; }
+  .is-screen .dashboard-heading-event:first-child, .is-screen .dashboard-heading-event:nth-child(2) { grid-column: auto; grid-row: auto; }
+}

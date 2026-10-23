@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { dashboardUrgency, dashboardNextDeadlines, dashboardPreferences, readDashboardPreferences, dashboardCompletionStats } from '../utils/dashboard-experience.mjs'
+import { dashboardUrgency, dashboardTaskCountdown, dashboardNextDeadlines, dashboardPreferences, readDashboardPreferences, dashboardCompletionStats } from '../utils/dashboard-experience.mjs'
 
 const parse = value => Date.parse(value + '+08:00')
 const task = (id, overrides = {}) => ({ id, status: 'todo', deadline: null, completedAt: null, priority: 'medium', ...overrides })
@@ -104,4 +104,18 @@ test('未填GitCode、非个人主页或重复账号不误连队员，未知作�
   assert.equal(dashboardCodeProfile({ name: '成员甲' }, [member], logo).external, true)
   assert.equal(dashboardCodeProfile({ name: 'unknown', href: 'https://github.com/unknown' }, [], logo).href, 'https://gitcode.com')
   for (const href of ['https://gitcode.com/.', 'https://gitcode.com/..', 'http://gitcode.com/example', 'https://gitcode.com/example?token=private']) assert.equal(gitcodeProfileLogin(href), '')
+})
+
+
+test('任务倒计时保留天时分秒，到期边界与跨日一致，完成和缺少日期明确区分', () => {
+  const now = parse('2026-10-23T12:00:00')
+  assert.equal(dashboardTaskCountdown(task('x', { deadline: now + 3 * 86400000 + 6 * 3600000 + 24 * 60000 + 18000 }), now), '剩余 3天 06:24:18')
+  assert.equal(dashboardTaskCountdown(task('x', { deadline: now + 1 }), now), '剩余 0天 00:00:01')
+  assert.equal(dashboardTaskCountdown(task('x', { deadline: now }), now), '已逾期 0天 00:00:00')
+  assert.equal(dashboardTaskCountdown(task('x', { deadline: now - 2 * 86400000 - 3 * 3600000 - 12500 }), now), '已逾期 2天 03:00:12')
+  assert.equal(dashboardTaskCountdown(task('x', { deadline: now + 1000 }), now + 1000), '已逾期 0天 00:00:00')
+  assert.equal(dashboardTaskCountdown(task('x', { deadline: now, status: 'done' }), now), '')
+  assert.equal(dashboardTaskCountdown(task('x'), now), '未设置截止')
+  assert.equal(dashboardTaskCountdown(task('x', { deadline: NaN }), now), '未设置截止')
+  assert.equal(dashboardTaskCountdown(task('x', { deadline: now }), 0), '正在校时…')
 })

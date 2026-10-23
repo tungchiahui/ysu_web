@@ -225,6 +225,13 @@ test('面板容量随真实可用宽高增长，窄屏至少保留一列一行',
   assert.equal(dashboardGridLayout(0, 0).size, 1)
 })
 
+test('紧凑卡片按实际行高增加容量，不因屏幕较高拉伸卡片', () => {
+  assert.deepEqual(dashboardGridLayout(1060, 680, 10, 16, 224), { columns: 2, rows: 2, size: 4 })
+  assert.deepEqual(dashboardGridLayout(1060, 700, 10, 16, 224), { columns: 2, rows: 3, size: 6 })
+  assert.equal(dashboardGridLayout(1060, 700, 10, 16).size, 4)
+  assert.equal(dashboardGridLayout(1060, 700, 10, 16, NaN).size, 4)
+})
+
 test('成员入口直达已有档案，缺少档案时不生成链接', () => {
   assert.equal(dashboardMemberPath('成员甲', ['成员甲']), '/team/' + encodeURIComponent('成员甲'))
   assert.equal(dashboardMemberPath('成员乙 & /'), '')

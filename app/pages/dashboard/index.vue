@@ -3,7 +3,7 @@ import { site } from '~/data/site'
 import { competitions } from '~/data/competitions'
 import { prepareCompetitions, competitionTimeLeft } from '~/utils/competitions'
 import { dashboardGridLayout, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
-import { dashboardUrgency, dashboardNextDeadlines, DASHBOARD_PREFERENCES_KEY, dashboardPreferences, readDashboardPreferences } from '../../../utils/dashboard-experience.mjs'
+import { dashboardUrgency, DASHBOARD_PREFERENCES_KEY, dashboardPreferences, readDashboardPreferences } from '../../../utils/dashboard-experience.mjs'
 import { dashboardCodeProfile } from '../../../utils/dashboard-members.mjs'
 
 useHead({ title: `任务看板 | ${site.shortName}`, meta: [{ name: 'robots', content: 'noindex, nofollow' }], bodyAttrs: { class: 'dashboard-tech' } })
@@ -14,7 +14,6 @@ const fullscreen = ref(false)
 const displayMessage = ref('')
 const selectedTaskId = ref<string | null>(null)
 const showCompletion = ref(false)
-const nextDeadlineIndex = ref(0)
 const viewportFitsScreen = ref(false)
 const desktopPagination = ref(false)
 const showSyncDetails = ref(false)
@@ -47,7 +46,6 @@ let request: AbortController | undefined
 let pollTimer: ReturnType<typeof setTimeout> | undefined
 let clockTimer: ReturnType<typeof setInterval> | undefined
 let lastRotation = 0
-let lastDeadlineRotation = 0
 let preferencesLoaded = false
 let ownsFullscreen = false
 let disposed = false
@@ -81,16 +79,9 @@ const pageTasks = computed(() => paginated.value ? visibleTasks.value.slice(page
 const rankedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value }))
 const todoRanks = computed(() => dashboardRanks(rankedTasks.value, 'todo'))
 const doneRanks = computed(() => dashboardRanks(rankedTasks.value, 'done'))
-const nextDeadlines = computed<DashboardTask[]>(() => dashboardNextDeadlines(scopedTasks.value, currentTime.value))
-const nextDeadline = computed(() => nextDeadlines.value[nextDeadlineIndex.value] || nextDeadlines.value[0])
 const activeTask = computed(() => tasks.value.find(task => task.id === selectedTaskId.value))
 const overlayOpen = computed(() => Boolean(activeTask.value || showCompletion.value))
 const completionScope = computed(() => `${selectedGroup.value === 'all' ? '全部组别' : selectedGroup.value}${search.value.trim() ? ' · 当前关键词筛选' : ''}`)
-const countdown = computed(() => {
-  if (!nextDeadline.value?.deadline) return '暂无待到期任务'
-  const seconds = Math.max(0, Math.floor((nextDeadline.value.deadline - currentTime.value) / 1000))
-  return `${Math.floor(seconds / 86400)} 天 ${String(Math.floor(seconds / 3600) % 24).padStart(2, '0')}:${String(Math.floor(seconds / 60) % 60).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`
-})
 const development = computed(() => data.value?.development || data.value?.github)
 const developmentEvents = computed(() => {
   const events = development.value?.events || []
@@ -109,7 +100,6 @@ const clock = computed(() => currentTime.value ? new Intl.DateTimeFormat('zh-CN'
 
 watch([selectedStatus, selectedGroup, search, pageSize, paginated], () => { pageIndex.value = 0; lastRotation = currentTime.value })
 watch(pages, value => { pageIndex.value = Math.min(pageIndex.value, value - 1) })
-watch(() => nextDeadlines.value.map(task => task.id).join('\n'), () => { nextDeadlineIndex.value = 0; lastDeadlineRotation = currentTime.value })
 watch(activeTask, task => { if (!task) selectedTaskId.value = null })
 watch(data, value => { if (!value) { selectedTaskId.value = null; showCompletion.value = false } })
 watch([selectedGroup, selectedStatus, screen, autoRotate], () => {
@@ -213,10 +203,6 @@ function openCard(event: MouseEvent, id: string) {
   if (!(event.target instanceof Element) || event.target.closest('a, button, input, select')) return
   openTask(id)
 }
-function rotateDeadline(direction: number) {
-  nextDeadlineIndex.value = (nextDeadlineIndex.value + direction + nextDeadlines.value.length) % nextDeadlines.value.length
-  lastDeadlineRotation = currentTime.value
-}
 async function toggleFullscreen() {
   displayMessage.value = ''
   try {
@@ -249,7 +235,11 @@ function resetDisplay() {
   displayMessage.value = '已恢复默认显示设置。'
 }
 
-const resumeRefresh = () => { if (!document.hidden && !['locked', 'closed'].includes(phase.value)) void refresh() }
+const resumeRefresh = () => {
+  if (document.hidden) return
+  currentTime.value = Date.now()
+  if (!['locked', 'closed'].includes(phase.value)) void refresh()
+}
 const resizeScreen = () => {
   const candidate = screen.value && window.matchMedia('(min-width: 1200px) and (min-height: 700px)').matches
   // 先按固定大屏样式实测，避免普通模式较大的间距误判为没有空间。
@@ -269,7 +259,8 @@ const resizeScreen = () => {
   // 桌面普通模式用独立的视口预算分页，不使用完整任务列表的高度，避免反馈增长；窄屏连续滚动。
   const fontSize = Number.parseFloat(getComputedStyle(taskList.value).fontSize) || 16
   const height = fixedScreen.value ? box.height : Math.max(300, Math.min(window.innerHeight * .62, 900))
-  layout.value = dashboardGridLayout(box.width, height, fixedScreen.value ? 10 : 14, fontSize)
+  const cardHeight = Number.parseFloat(getComputedStyle(taskList.value).gridAutoRows) || 224 * Math.max(1, fontSize / 16)
+  layout.value = dashboardGridLayout(box.width, height, fixedScreen.value ? 10 : 14, fontSize, cardHeight)
 }
 watch(taskList, (element, previous) => {
   if (previous) layoutObserver?.unobserve(previous)
@@ -277,7 +268,7 @@ watch(taskList, (element, previous) => {
   void nextTick(resizeScreen)
 }, { flush: 'post' })
 watch([screen, showSyncDetails], () => { void nextTick(resizeScreen) })
-watch([data, selectedGroup, search, nextDeadline], () => { void nextTick(resizeScreen) }, { flush: 'post' })
+watch([data, selectedGroup, search], () => { void nextTick(resizeScreen) }, { flush: 'post' })
 onMounted(() => {
   currentTime.value = Date.now()
   lastRotation = currentTime.value
@@ -294,12 +285,12 @@ onMounted(() => {
   resizeScreen()
   document.body.classList.toggle('dashboard-screen', screen.value)
   clockTimer = setInterval(() => {
+    if (document.hidden) return
     currentTime.value = Date.now()
     if (fixedScreen.value && autoRotate.value && !overlayOpen.value && !document.hidden && pages.value > 1 && currentTime.value - lastRotation >= 15_000) {
       pageIndex.value = (pageIndex.value + 1) % pages.value
       lastRotation = currentTime.value
     }
-    if (screen.value && autoRotate.value && !overlayOpen.value && !document.hidden && nextDeadlines.value.length > 1 && currentTime.value - lastDeadlineRotation >= 10_000) rotateDeadline(1)
   }, 1000)
   document.addEventListener('visibilitychange', resumeRefresh)
   window.addEventListener('resize', resizeScreen)
@@ -324,7 +315,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main ref="dashboardPage" class="dashboard-page" :class="{ 'is-screen': screen, 'is-fixed-screen': fixedScreen, 'is-gated': !data }">
+  <main ref="dashboardPage" class="dashboard-page" :class="{ 'is-screen': screen, 'is-fixed-screen': fixedScreen, 'is-paginated': paginated, 'is-gated': !data }">
     <header class="dashboard-heading">
       <NuxtLink class="dashboard-identity" to="/" :aria-label="`${site.university}${site.shortName}，返回首页`">
         <span class="dashboard-insignia"><img :src="site.logo" :alt="site.logoAlt" width="96" height="96"></span>
@@ -334,13 +325,17 @@ onBeforeUnmount(() => {
         <div class="dashboard-title-block"><p class="eyebrow">Mission Control</p><h1>任务看板</h1></div>
         <section v-if="eventCountdowns.length" class="dashboard-heading-competitions" aria-label="赛事倒计时">
           <article v-for="event in eventCountdowns" :key="event.name" class="dashboard-heading-event" :class="{ 'is-reached': event.state === 'reached' }">
-            <h2><img src="/images/competitions/robomaster.png" alt="RoboMaster" width="1021" height="663">{{ event.name }}</h2>
+            <div class="dashboard-heading-event-info">
+              <h2><img src="/images/competitions/robomaster.png" alt="RoboMaster" width="1021" height="663">{{ event.name }}</h2>
+              <div class="dashboard-heading-event-meta">
+                <span v-if="event.dateStatus !== 'pending'" class="dashboard-heading-event-status" :class="event.dateStatus">{{ event.dateStatus === 'historical' ? `去年同期参考（${event.referenceYear}）` : event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span>
+                <time v-if="event.target !== null" :datetime="event.startsAt || undefined" :title="`${formatEventTime(event.target)} · 北京时间${event.dateStatus === 'historical' ? ' · 同期推算' : ''}`">{{ formatTime(event.target) }} · 北京时间</time>
+              </div>
+            </div>
             <div class="dashboard-heading-event-count">
               <template v-if="event.state === 'counting'"><span class="visually-hidden">{{ event.dateStatus === 'historical' ? '距离参考日期' : '距离赛事' }}</span><strong>{{ event.days }}<small> 天</small></strong><span>{{ event.clock }}</span></template>
               <strong v-else>{{ event.state === 'pending' ? '日期待定' : event.state === 'waiting' ? '正在校时…' : '已到达节点' }}</strong>
             </div>
-            <span v-if="event.dateStatus !== 'pending'" class="dashboard-heading-event-status" :class="event.dateStatus">{{ event.dateStatus === 'historical' ? `去年同期参考（${event.referenceYear}）` : event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span>
-            <time v-if="event.target !== null" :datetime="event.startsAt || undefined" :title="`${formatEventTime(event.target)} · 北京时间${event.dateStatus === 'historical' ? ' · 同期推算' : ''}`">{{ formatTime(event.target) }} · 北京时间</time>
           </article>
         </section>
       </div>
@@ -393,28 +388,6 @@ onBeforeUnmount(() => {
           <div><span>已完成</span><strong>{{ counts.done }}</strong><button type="button" class="dashboard-text-button dashboard-trend-trigger" aria-label="查看完成趋势" @click="selectedTaskId = null; showCompletion = true">完成趋势 →</button></div>
         </section>
       </div>
-      <section class="dashboard-stats dashboard-deadline-strip" aria-label="最近截止任务">
-        <div class="dashboard-countdown">
-          <div class="dashboard-deadline-heading"><span>距离最近截止</span><div v-if="nextDeadline" class="dashboard-task-flags"><span v-if="dashboardUrgency(nextDeadline, currentTime)" class="dashboard-urgency" :class="dashboardUrgency(nextDeadline, currentTime)!.level">{{ dashboardUrgency(nextDeadline, currentTime)!.label }}</span><span class="dashboard-deadline-priority" :class="nextDeadline.priority">{{ priorityLabels[nextDeadline.priority] }}</span></div></div>
-          <strong>{{ countdown }}</strong>
-          <template v-if="nextDeadline">
-            <p class="dashboard-deadline-title"><button type="button" class="dashboard-task-title" :aria-label="`查看任务详情：${nextDeadline.title}`" @click="openTask(nextDeadline.id)">{{ nextDeadline.title }}</button></p>
-            <details class="dashboard-deadline-more" @toggle="resizeScreen"><summary>执行人与截止信息</summary>
-            <div class="dashboard-deadline-people">
-              <span class="dashboard-deadline-label">执行人</span>
-              <DashboardMember v-for="person in nextDeadline.assignees" :key="person.key" :person="person" :profile="memberProfile(person.name)" />
-              <span v-if="!nextDeadline.assignees.length">待分配</span>
-            </div>
-            <div class="dashboard-deadline-details">
-              <time :datetime="new Date(nextDeadline.deadline!).toISOString()">截止 {{ formatTime(nextDeadline.deadline) }}</time>
-              <span v-if="nextDeadline.group" :title="nextDeadline.group">{{ nextDeadline.group }}</span>
-            </div>
-            <div v-if="nextDeadlines.length > 1" class="dashboard-deadline-switch"><span>同时截止共 {{ nextDeadlines.length }} 项 · {{ nextDeadlineIndex + 1 }}/{{ nextDeadlines.length }}</span><div><button type="button" aria-label="上一项最近任务" @click="rotateDeadline(-1)">‹</button><button type="button" aria-label="下一项最近任务" @click="rotateDeadline(1)">›</button><button v-if="screen" type="button" :aria-label="autoRotate ? '暂停最近任务轮播' : '继续最近任务轮播'" :aria-pressed="autoRotate" @click="autoRotate = !autoRotate">{{ autoRotate ? '暂停' : '轮播' }}</button></div></div>
-            </details>
-          </template>
-        </div>
-      </section>
-
       <div class="dashboard-grid">
         <section class="dashboard-panel dashboard-tasks" aria-label="任务列表">
           <div class="dashboard-panel-heading"><h2>任务进展</h2><span>{{ visibleTasks.length }} 项</span></div>
@@ -423,9 +396,9 @@ onBeforeUnmount(() => {
             <article v-for="task in pageTasks" :key="task.id" class="dashboard-task" :class="dashboardTaskState(task, currentTime)" @click="openCard($event, task.id)">
               <div class="dashboard-task-top"><span v-if="task.group" class="dashboard-tag" :title="task.group">{{ task.group }}</span><div class="dashboard-task-flags"><span v-if="dashboardUrgency(task, currentTime)" class="dashboard-urgency" :class="dashboardUrgency(task, currentTime)!.level">{{ dashboardUrgency(task, currentTime)!.label }}</span><span class="dashboard-priority" :class="task.priority">{{ priorityLabels[task.priority] }}</span></div></div>
               <h3><button type="button" class="dashboard-task-title" :aria-label="`查看任务详情：${task.title}`" @click="openTask(task.id)">{{ task.title }}</button></h3>
-              <div class="dashboard-assignees"><span class="dashboard-label">执行人</span><span v-if="!task.assignees.length">待分配</span><DashboardMember v-for="person in task.assignees" :key="person.key" :person="person" :profile="memberProfile(person.name)" /></div>
+              <div class="dashboard-assignees"><span class="dashboard-label">执行人</span><span v-if="!task.assignees.length">待分配</span><DashboardMember v-for="person in paginated ? task.assignees.slice(0, 2) : task.assignees" :key="person.key" :person="person" :profile="memberProfile(person.name)" /><button v-if="paginated && task.assignees.length > 2" type="button" class="dashboard-more-people" :aria-label="`另有${task.assignees.length - 2}位执行人，查看全部`" @click="openTask(task.id)">+{{ task.assignees.length - 2 }}</button></div>
               <p v-if="task.note" class="dashboard-note" :title="task.note">{{ task.note }}</p>
-              <div class="dashboard-task-meta"><span :class="{ 'dashboard-danger': dashboardTaskState(task, currentTime) === 'overdue' }">{{ task.status === 'done' ? task.completedAt ? `完成于 ${formatTime(task.completedAt)}` : '完成时间未记录' : `截止 ${formatTime(task.deadline)}` }}</span><span v-if="task.publisher" class="dashboard-publishers">发布人 <DashboardMember v-for="person in task.publishers || [{ key: task.publisher, name: task.publisher, avatar: '' }]" :key="person.key" :person="person" :profile="memberProfile(person.name)" /></span></div>
+              <div class="dashboard-task-meta" :class="{ 'has-publisher': task.publisher }"><DashboardTaskTiming :task="task" :now="currentTime" /><span v-if="task.publisher" class="dashboard-publishers"><span class="dashboard-publisher-label">发布人</span> <DashboardMember v-for="person in task.publishers || [{ key: task.publisher, name: task.publisher, avatar: '' }]" :key="person.key" :person="person" :profile="memberProfile(person.name)" /></span></div>
             </article>
           </div>
           <div v-else class="dashboard-empty">{{ tasks.length ? '没有匹配的任务。' : '暂无任务，新的进展会显示在这里。' }}</div>
