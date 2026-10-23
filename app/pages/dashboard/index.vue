@@ -16,7 +16,10 @@ const selectedTaskId = ref<string | null>(null)
 const showCompletion = ref(false)
 const nextDeadlineIndex = ref(0)
 const viewportFitsScreen = ref(false)
-const paginated = computed(() => screen.value && viewportFitsScreen.value)
+const desktopPagination = ref(false)
+const showSyncDetails = ref(false)
+const fixedScreen = computed(() => screen.value && viewportFitsScreen.value)
+const paginated = computed(() => desktopPagination.value || fixedScreen.value)
 const data = shallowRef<DashboardData | null>(null)
 const phase = ref('loading')
 const message = ref('')
@@ -257,21 +260,23 @@ const resizeScreen = () => {
       const style = getComputedStyle(element)
       return total + element.getBoundingClientRect().height + (Number.parseFloat(style.marginTop) || 0) + (Number.parseFloat(style.marginBottom) || 0)
     }, 0)
-  // 短屏或顶部内容较多时保留连续滚动，避免任务面板被压成零高度。
+  // 短屏或顶部内容较多时解除固定高度，避免任务面板被压成零高度。
   viewportFitsScreen.value = candidate && window.innerHeight - 32 - occupied >= 260
-  dashboardPage.value?.classList.toggle('is-fixed-screen', paginated.value)
+  dashboardPage.value?.classList.toggle('is-fixed-screen', fixedScreen.value)
+  desktopPagination.value = window.matchMedia('(min-width: 1000px)').matches
   if (!taskList.value) return
   const box = taskList.value.getBoundingClientRect()
-  // 只有固定桌面大屏按高度分页；手机、平板和普通模式完整展示筛选结果，直接向下滚动。
+  // 桌面普通模式用独立的视口预算分页，不使用完整任务列表的高度，避免反馈增长；窄屏连续滚动。
   const fontSize = Number.parseFloat(getComputedStyle(taskList.value).fontSize) || 16
-  layout.value = dashboardGridLayout(box.width, paginated.value ? box.height : 260, paginated.value ? 10 : 14, fontSize)
+  const height = fixedScreen.value ? box.height : Math.max(300, Math.min(window.innerHeight * .62, 900))
+  layout.value = dashboardGridLayout(box.width, height, fixedScreen.value ? 10 : 14, fontSize)
 }
 watch(taskList, (element, previous) => {
   if (previous) layoutObserver?.unobserve(previous)
   if (element) layoutObserver?.observe(element)
   void nextTick(resizeScreen)
 }, { flush: 'post' })
-watch(screen, () => { void nextTick(resizeScreen) })
+watch([screen, showSyncDetails], () => { void nextTick(resizeScreen) })
 watch([data, selectedGroup, search, nextDeadline], () => { void nextTick(resizeScreen) }, { flush: 'post' })
 onMounted(() => {
   currentTime.value = Date.now()
@@ -290,7 +295,7 @@ onMounted(() => {
   document.body.classList.toggle('dashboard-screen', screen.value)
   clockTimer = setInterval(() => {
     currentTime.value = Date.now()
-    if (paginated.value && autoRotate.value && !overlayOpen.value && !document.hidden && pages.value > 1 && currentTime.value - lastRotation >= 15_000) {
+    if (fixedScreen.value && autoRotate.value && !overlayOpen.value && !document.hidden && pages.value > 1 && currentTime.value - lastRotation >= 15_000) {
       pageIndex.value = (pageIndex.value + 1) % pages.value
       lastRotation = currentTime.value
     }
@@ -319,7 +324,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main ref="dashboardPage" class="dashboard-page" :class="{ 'is-screen': screen, 'is-fixed-screen': paginated, 'is-gated': !data }">
+  <main ref="dashboardPage" class="dashboard-page" :class="{ 'is-screen': screen, 'is-fixed-screen': fixedScreen, 'is-gated': !data }">
     <header class="dashboard-heading">
       <NuxtLink class="dashboard-identity" to="/" :aria-label="`${site.university}${site.shortName}，返回首页`">
         <span class="dashboard-insignia"><img :src="site.logo" :alt="site.logoAlt" width="96" height="96"></span>
@@ -422,7 +427,7 @@ onBeforeUnmount(() => {
             </article>
           </div>
           <div v-else class="dashboard-empty">{{ tasks.length ? '没有匹配的任务。' : '暂无任务，新的进展会显示在这里。' }}</div>
-          <div v-if="paginated && pageTasks.length" class="dashboard-pagination" aria-label="任务分页"><button type="button" aria-label="上一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + pages - 1) % pages">上一页</button><span>{{ pageIndex + 1 }} / {{ pages }} <small>每页 {{ pageSize }} 项</small></span><button type="button" aria-label="下一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + 1) % pages">下一页</button><button v-if="screen" type="button" :disabled="pages === 1" :aria-pressed="autoRotate" @click="autoRotate = !autoRotate">{{ autoRotate ? '暂停轮播' : '继续轮播' }}</button></div>
+          <div v-if="paginated && pageTasks.length" class="dashboard-pagination" aria-label="任务分页"><button type="button" aria-label="上一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + pages - 1) % pages">上一页</button><span>{{ pageIndex + 1 }} / {{ pages }} <small>每页 {{ pageSize }} 项</small></span><button type="button" aria-label="下一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + 1) % pages">下一页</button><button v-if="fixedScreen" type="button" :disabled="pages === 1" :aria-pressed="autoRotate" @click="autoRotate = !autoRotate">{{ autoRotate ? '暂停轮播' : '继续轮播' }}</button></div>
         </section>
 
         <aside class="dashboard-ranks" aria-label="个人任务统计">
@@ -435,9 +440,11 @@ onBeforeUnmount(() => {
       </div>
 
       <section v-if="development?.enabled" class="dashboard-panel dashboard-development" aria-label="研发动态">
-        <div class="dashboard-panel-heading"><h2>研发动态 <small class="dashboard-code-platform">GitCode</small></h2><span>{{ development.configurationError ? '仓库配置待检查' : development.syncing ? '分批同步中，当前为部分结果' : development.unavailable ? '部分数据暂不可用' : `更新于 ${formatTime(development.updatedAt)}` }}</span></div>
-        <p v-if="development.organization" class="dashboard-code-scope"><a :href="development.organization.href" target="_blank" rel="noopener noreferrer">{{ development.organization.name }}</a><span>{{ development.organization.unavailable ? '组织列表更新中断' : development.organization.includedCount === 0 ? '当前可读取范围内没有纳入的代码仓库' : '组织代码仓库' }}</span><span v-if="development.organization.includedCount !== undefined">已同步 {{ development.sources?.filter(source => !source.pending && !source.unavailable).length || 0 }} / {{ development.organization.includedCount }}<template v-if="development.organization.excludedCount"> · 已排除 {{ development.organization.excludedCount }}</template></span><time v-if="development.organization.updatedAt">列表更新 {{ formatTime(development.organization.updatedAt) }}</time></p>
-        <ul v-if="development.sources?.length" class="dashboard-code-sources" aria-label="代码仓库同步状态" tabindex="0"><li v-for="source in development.sources" :key="source.key" :class="{ 'is-unavailable': source.unavailable || source.pending }"><a :href="source.href" target="_blank" rel="noopener noreferrer">{{ source.repo }}</a><small v-if="source.fork">Fork</small><span>{{ source.pending ? (source.unavailable ? '等待同步 · 部分失败' : '等待同步') : source.unavailable ? '更新中断' : '已同步' }}</span><time v-if="source.updatedAt" :datetime="new Date(source.updatedAt).toISOString()">{{ formatTime(source.updatedAt) }}</time></li></ul>
+        <div class="dashboard-panel-heading"><h2>研发动态 <small class="dashboard-code-platform">GitCode</small></h2><div class="dashboard-development-controls"><span>{{ development.configurationError ? '仓库配置待检查' : development.syncing ? '分批同步中，当前为部分结果' : development.unavailable ? '部分数据暂不可用' : `更新于 ${formatTime(development.updatedAt)}` }}</span><button v-if="development.organization || development.sources?.length" type="button" class="dashboard-text-button" :aria-expanded="showSyncDetails" aria-controls="dashboard-sync-details" @click="showSyncDetails = !showSyncDetails">{{ showSyncDetails ? '收起同步详情 ↑' : '同步详情 ↓' }}</button></div></div>
+        <div v-if="showSyncDetails" id="dashboard-sync-details">
+          <p v-if="development.organization" class="dashboard-code-scope"><a :href="development.organization.href" target="_blank" rel="noopener noreferrer">{{ development.organization.name }}</a><span>{{ development.organization.unavailable ? '组织列表更新中断' : development.organization.includedCount === 0 ? '当前可读取范围内没有纳入的代码仓库' : '组织代码仓库' }}</span><span v-if="development.organization.includedCount !== undefined">已同步 {{ development.sources?.filter(source => !source.pending && !source.unavailable).length || 0 }} / {{ development.organization.includedCount }}<template v-if="development.organization.excludedCount"> · 已排除 {{ development.organization.excludedCount }}</template></span><time v-if="development.organization.updatedAt">列表更新 {{ formatTime(development.organization.updatedAt) }}</time></p>
+          <ul v-if="development.sources?.length" class="dashboard-code-sources" aria-label="代码仓库同步状态" tabindex="0"><li v-for="source in development.sources" :key="source.key" :class="{ 'is-unavailable': source.unavailable || source.pending }"><a :href="source.href" target="_blank" rel="noopener noreferrer">{{ source.repo }}</a><small v-if="source.fork">Fork</small><span>{{ source.pending ? (source.unavailable ? '等待同步 · 部分失败' : '等待同步') : source.unavailable ? '更新中断' : '已同步' }}</span><time v-if="source.updatedAt" :datetime="new Date(source.updatedAt).toISOString()">{{ formatTime(source.updatedAt) }}</time></li></ul>
+        </div>
         <div class="dashboard-development-grid">
           <div><h3>代码贡献榜 <small>{{ development.syncing ? '部分仓库 · 提交次数' : '提交次数' }}</small></h3><ol v-if="development.contributors.length" class="dashboard-code-ranks"><li v-for="person in development.contributors" :key="person.key || person.name"><DashboardCodeContributor :person="person" :profile="codeProfile(person)" /></li></ol><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步贡献记录' : development.unavailable ? '暂时无法读取贡献记录' : '暂无贡献记录' }}</p></div>
           <div><h3>最近更新</h3><ul v-if="developmentEvents.length" class="dashboard-events"><li v-for="event in developmentEvents" :key="event.id"><time>{{ formatTime(event.at) }}</time><div class="dashboard-event-content"><DashboardCodeIdentity :profile="codeProfile({ name: event.actor, href: event.actorHref, login: event.actorLogin })" /><span>{{ event.action }}</span><a class="dashboard-event-repo" :href="event.href" target="_blank" rel="noopener noreferrer">{{ event.repo }} <span aria-hidden="true">↗</span></a></div></li></ul><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步研发动态' : development.unavailable ? '暂时无法读取研发动态' : '暂无研发动态' }}</p></div>

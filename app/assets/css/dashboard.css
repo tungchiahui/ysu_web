@@ -561,3 +561,6 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 .dashboard-code-person-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 .dashboard-code-platform { color: var(--muted); font-size: .7rem; font-weight: 400; }
 @media (min-width: 1200px) and (min-height: 700px) { .is-fixed-screen .dashboard-code-sources { margin-bottom: 10px; } }
+
+.dashboard-development-controls { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 14px; font-size: calc(var(--dashboard-text) * .8); color: var(--muted); }
+.dashboard-development-controls .dashboard-text-button { white-space: nowrap; }
