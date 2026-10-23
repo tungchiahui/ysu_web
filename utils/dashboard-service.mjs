@@ -27,7 +27,7 @@ export function createDashboardService({ fetcher = globalThis.fetch, now = Date.
     const env = context.env || {}
     const keys = ['DASHBOARD_ENABLED', 'DASHBOARD_PUBLIC', 'DASHBOARD_ACCESS_CODE', 'FEISHU_APP_ID', 'FEISHU_APP_SECRET',
       'FEISHU_BITABLE_APP_TOKEN', 'FEISHU_BITABLE_TABLE_ID', 'FEISHU_BITABLE_VIEW_ID', 'FEISHU_FIELD_MAP',
-      'DASHBOARD_GITCODE_REPOS', 'DASHBOARD_GITCODE_TOKEN', 'DASHBOARD_GITCODE_PEOPLE']
+      'DASHBOARD_GITCODE_REPOS', 'DASHBOARD_GITCODE_ORG', 'DASHBOARD_GITCODE_EXCLUDE_REPOS', 'DASHBOARD_GITCODE_TOKEN', 'DASHBOARD_GITCODE_PEOPLE']
     const scope = JSON.stringify(keys.map(key => env[key] || ''))
     if (!handlers.has(scope)) {
       if (handlers.size >= 4) handlers.delete(handlers.keys().next().value)
@@ -44,12 +44,15 @@ function createScopedService({ fetcher, now }) {
   async function json(url, options = {}) {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), 10_000)
+    const abort = () => controller.abort()
+    if (options.signal?.aborted) controller.abort()
+    else options.signal?.addEventListener('abort', abort, { once: true })
     try {
       const result = await fetcher(url, { ...options, signal: controller.signal, redirect: 'error' })
       if (!result.ok) throw new Error(result.status === 401 ? 'UPSTREAM_UNAUTHORIZED' : 'UPSTREAM_UNAVAILABLE')
       if (result.status === 204) return []
       return await result.json()
-    } finally { clearTimeout(timer) }
+    } finally { clearTimeout(timer); options.signal?.removeEventListener('abort', abort) }
   }
 
   async function tenantToken(env) {

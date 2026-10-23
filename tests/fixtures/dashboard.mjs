@@ -18,9 +18,10 @@ export function dashboardFixtures(now = Date.now()) {
   }))
   return { records, data: {
     demo: true, tasks: normalizeDashboardRecords(records), updatedAt: now, stale: false, refreshSeconds: 30,
-    development: { enabled: true, unavailable: false, updatedAt: now,
+    development: { enabled: true, unavailable: true, syncing: true, updatedAt: now,
+      organization: { name: 'example-team', href: 'https://gitcode.com/example-team', unavailable: false, discoveredCount: 40, includedCount: 40, excludedCount: 0, updatedAt: now },
       contributors: [{ key: 'demo-developer', name: 'example-developer', count: 24, avatar: '', href: 'https://gitcode.com/example' }],
-      sources: [{ key: 'gitcode:example/robot', repo: 'example/robot', href: 'https://gitcode.com/example/robot', unavailable: false, contributionsUnavailable: false, eventsUnavailable: false, updatedAt: now }],
+      sources: Array.from({ length: 40 }, (_, i) => ({ key: `example-team/robot-${i + 1}`, repo: `example-team/robot-${i + 1}`, href: `https://gitcode.com/example-team/robot-${i + 1}`, fork: i === 0, pending: i === 37 || i === 38, unavailable: i === 39, contributionsUnavailable: i >= 37, eventsUnavailable: i >= 37, updatedAt: i >= 37 ? undefined : now })),
       events: Array.from({ length: 7 }, (_, i) => ({ id: `demo-event-${i}`, repo: 'example/robot', actor: 'example-developer', action: '推送了代码', at: now - i * 60_000, href: 'https://gitcode.com/example/robot' })) }
   } }
 }
