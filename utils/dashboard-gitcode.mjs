@@ -97,12 +97,12 @@ function identity(person, mappings, scope = '') {
   const memberName = names[0] || ''
   return {
     identity: memberName ? `member:${memberName}` : email ? `email:${email}` : login ? `login:${login.toLowerCase()}` : `${scope}:author:${author}`,
-    memberName, name: memberName || cleanName(author, login || '未匹配作者'),
+    memberName, login, name: memberName || cleanName(author, login || '未匹配作者'),
     avatar: safeDashboardUrl(person.avatar_url), href: login ? `https://gitcode.com/${login}` : ''
   }
 }
 
-const gitcodeActions = { push: '推送了代码', pushed: '推送了代码', 'pushed to': '推送了代码', 'pushed new': '推送了代码', merged: '合并了代码', accepted: '合并了代码', opened: '创建了事项', closed: '关闭了事项', reopened: '重新打开了事项', commented: '发表了评论', created: '创建了仓库内容', released: '发布了版本' }
+const gitcodeActions = { push: '推送了代码', pushed: '推送了代码', 'pushed to': '推送了代码', 'pushed new': '推送了代码', merged: '合并了代码', accepted: '合并了代码', opened: '打开了事项', closed: '关闭了事项', reopened: '重新打开了事项', commented: '发表了评论', created: '创建了仓库内容', released: '发布了版本' }
 
 // 一次响应最多等待8秒、同时最多4个GitCode请求；下一次轮询从未轮到的任务继续。
 export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, concurrency = 4 } = {}) {
@@ -235,10 +235,13 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
               const action = gitcodeActions[String(event.action_name || '').toLowerCase()]
               const at = Date.parse(event.created_at)
               if (!action || !Number.isFinite(at) || at > now() + 60_000) return []
-              const person = { ...event.author, login: event.author?.username || event.author_username }
+              const publicProfile = typeof event.author?.web_url === 'string' ? /^https:\/\/gitcode\.com\/([a-z\d_.-]+)\/?$/i.exec(event.author.web_url) : null
+              const person = { ...event.author, name: cleanName(event.author?.name_cn, event.author?.name),
+                login: publicProfile?.[1] || event.author?.username || event.author_username }
               const actor = person.login || person.name || person.email ? identity(person, mappings) : { name: 'GitCode' }
               const eventId = /^[a-z\d_-]+$/i.test(String(event.id || '')) ? event.id : `${at}:${index}`
-              return [{ id: `${source.key}:${eventId}`, repo: source.repo, actor: actor.name, action, at, href: source.href }]
+              return [{ id: `${source.key}:${eventId}`, repo: source.repo, actor: actor.name,
+                actorLogin: actor.login || '', actorHref: actor.href || source.href, action, at, href: source.href }]
             })
           })
         }
@@ -253,6 +256,8 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
           contributionsUnavailable: !rows || rows.unavailable, eventsUnavailable: !recent || recent.unavailable,
           contributionsReason: rows?.reason, eventsReason: recent?.reason,
           contributionsFailureStage: rows?.failureStage, eventsFailureStage: recent?.failureStage,
+          authorContributions: rows?.value ? rows.value.reduce((sum, person) => sum + person.count, 0) : undefined,
+          authorCount: rows?.value?.length, eventCount: recent?.value?.length,
           updatedAt: stamps.length ? Math.min(...stamps) : undefined })
         for (const person of rows?.value || []) {
           const existing = people.get(person.identity)
@@ -260,7 +265,7 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
             existing.count += person.count
             if (!existing.avatar) existing.avatar = person.avatar
             if (!existing.href) existing.href = person.href
-          } else people.set(person.identity, { ...person })
+          } else people.set(person.identity, { ...person, href: person.href || source.href })
         }
         events.push(...recent?.value || [])
       }

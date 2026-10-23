@@ -77,9 +77,14 @@
 .dashboard-code-ranks span { flex: 1; overflow-wrap: anywhere; }
 .dashboard-code-ranks strong { color: var(--cyan); }
 .dashboard-events li + li { border-top: 1px solid var(--line); }
-.dashboard-events a { display: flex; align-items: center; gap: 14px; padding: 10px 0; font-size: calc(var(--dashboard-text) * .9); }
+.dashboard-events li { display: flex; align-items: center; gap: 14px; padding: 10px 0; font-size: calc(var(--dashboard-text) * .9); }
 .dashboard-events time { color: var(--muted); font-size: calc(var(--dashboard-text) * .8); flex: 0 0 auto; }
-.dashboard-events a > span:first-of-type { flex: 1; overflow-wrap: anywhere; }
+.dashboard-event-content { display: flex; flex: 1; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; overflow-wrap: anywhere; }
+.dashboard-events .dashboard-event-repo { flex-basis: 100%; font-size: calc(var(--dashboard-text) * .8); color: var(--muted); overflow-wrap: anywhere; }
+.dashboard-code-identity { display: inline-flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink-soft); }
+.dashboard-code-identity img { width: var(--dashboard-avatar-size); height: var(--dashboard-avatar-size); object-fit: cover; border-radius: 50%; flex: 0 0 auto; }
+.dashboard-code-identity:hover { color: var(--cyan); }
+.dashboard-code-identity:focus-visible { outline: 2px solid var(--cyan); outline-offset: 3px; }
 .dashboard-events small { display: block; color: var(--muted); }
 /* 任务看板使用独立的深色仪表盘主题；离开页面后由 Unhead 移除 body 类名。 */
 body.dashboard-tech {
@@ -287,7 +292,7 @@ body.dashboard-tech::before {
 .dashboard-events time { color: #77a7bf; }
 .dashboard-events strong { color: #63cde3; font-weight: 500; }
 .dashboard-events small { color: #8bb5c9; font-size: calc(var(--dashboard-text) * .8); }
-.dashboard-events a > span:last-child { color: var(--cyan); font-family: var(--dashboard-mono); }
+.dashboard-event-repo > span:last-child { color: var(--cyan); font-family: var(--dashboard-mono); }
 .dashboard-notice { border-radius: 2px; background: rgba(12, 40, 59, .72); border-style: dashed; color: #77abc3; font-size: .8rem; }
 .dashboard-notice.dashboard-warning { border-color: rgba(255, 179, 92, .35); background: rgba(67, 44, 23, .2); }
 .dashboard-page * { scrollbar-width: thin; scrollbar-color: #20526b #061321; }

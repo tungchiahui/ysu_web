@@ -8,10 +8,13 @@ export type DashboardTask = {
 }
 export type DashboardDevelopment = {
   enabled: boolean; unavailable: boolean; updatedAt?: number; configurationError?: boolean; syncing?: boolean
-  organization?: { name: string; href: string; unavailable: boolean; updatedAt?: number; discoveredCount?: number; includedCount?: number; excludedCount?: number }
-  contributors: { key?: string; name: string; memberName?: string; count: number; avatar: string; href: string }[]
-  events: { id: string; repo: string; actor: string; action: string; at: number; href: string }[]
-  sources?: { key: string; repo: string; href: string; fork?: boolean; pending?: boolean; unavailable: boolean; contributionsUnavailable: boolean; eventsUnavailable: boolean; updatedAt?: number }[]
+  organization?: { name: string; href: string; unavailable: boolean; updatedAt?: number; discoveredCount?: number; includedCount?: number; excludedCount?: number
+    authenticated?: boolean; reason?: string; failureStage?: 'REQUEST' | 'PARSE' }
+  contributors: { key?: string; name: string; memberName?: string; login?: string; count: number; avatar: string; href: string }[]
+  events: { id: string; repo: string; actor: string; actorLogin?: string; actorHref?: string; action: string; at: number; href: string }[]
+  sources?: { key: string; repo: string; href: string; fork?: boolean; pending?: boolean; unavailable: boolean; contributionsUnavailable: boolean; eventsUnavailable: boolean; updatedAt?: number
+    authorContributions?: number; authorCount?: number; eventCount?: number; contributionsReason?: string; eventsReason?: string
+    contributionsFailureStage?: 'REQUEST' | 'PARSE'; eventsFailureStage?: 'REQUEST' | 'PARSE' }[]
 }
 export type DashboardData = {
   tasks: DashboardTask[]; updatedAt: number; stale: boolean; refreshSeconds: number; demo?: boolean

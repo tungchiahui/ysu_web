@@ -123,7 +123,7 @@ test('未知及敏感事件、无效日期、危险头像和邮件名称不直�
     ] } })({ DASHBOARD_GITCODE_REPOS: 'team/robot' })
   assert.equal(data.events.length, 1)
   assert.equal(data.contributors[0].avatar, '')
-  assert.equal(data.contributors[0].href, '')
+  assert.equal(data.contributors[0].href, 'https://gitcode.com/team/robot')
   assert(!JSON.stringify(data).includes('private@example.test'))
 })
 
@@ -498,5 +498,24 @@ test('组织接口以namespace.path和path定位仓库，展示full_name不作UR
     assert.equal(failed.organization.unavailable, true)
     assert.equal(failed.organization.failureStage, 'PARSE')
     assert.equal(failed.sources.length, 0)
+  }
+})
+
+test('真实动态优先中文显示名与可信公开账号，opened不译作创建，并提供逐仓库可核对的作者贡献合计', async () => {
+  const base = { DASHBOARD_GITCODE_REPOS: 'team/robot' }
+  const event = { action_name: 'opened', created_at: at, author: { username: 'internal-old', name: 'internal-name', name_cn: '中文昵称', web_url: 'https://gitcode.com/public-login', email: 'private@example.test' } }
+  const json = async url => url.includes('/contributors') ? [{ name: 'Author One', contributions: 3 }, { name: 'Author Two', contributions: 2 }] : { events: [event] }
+  const data = await createDashboardGitcode({ now: () => instant, json })(base)
+  assert.equal(data.events[0].actor, '中文昵称')
+  assert.equal(data.events[0].action, '打开了事项')
+  assert.equal(data.sources[0].authorContributions, 5)
+  assert.equal(data.sources[0].authorCount, 2)
+  assert.equal(data.sources[0].eventCount, 1)
+  const mapped = await createDashboardGitcode({ now: () => instant, json })({ ...base, DASHBOARD_GITCODE_PEOPLE: JSON.stringify([{ name: '示例成员甲', accounts: ['login:public-login'] }]) })
+  assert.equal(mapped.events[0].actor, '示例成员甲')
+  for (const web_url of ['https://outside.example.test/public-login', 'https://user:pass@gitcode.com/public-login', 'https://gitcode.com/public-login?token=private']) {
+    const invalid = await createDashboardGitcode({ now: () => instant, json: async url => url.includes('/contributors') ? [] : { events: [{ ...event, author: { ...event.author, web_url } }] } })({ ...base, DASHBOARD_GITCODE_PEOPLE: JSON.stringify([{ name: '示例成员甲', accounts: ['login:public-login'] }]) })
+    assert.equal(invalid.events[0].actor, '中文昵称')
+    assert(!JSON.stringify(invalid).includes('private@example.test'))
   }
 })

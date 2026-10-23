@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { dashboardFixtures } from '../tests/fixtures/dashboard.mjs'
 
-export async function startDashboardPreview({ port = 8790, root } = {}) {
+export async function startDashboardPreview({ port = 8790, root, fixture = dashboardFixtures() } = {}) {
   const project = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
   const publicRoot = root || await (async () => {
     for (const dir of ['.output/public', '.edgeone/assets']) {
@@ -14,7 +14,6 @@ export async function startDashboardPreview({ port = 8790, root } = {}) {
     throw new Error('请先执行 npm run generate，再启动本地演示。')
   })()
   // 示例只由这个本地服务器提供，不写入 public、不进入生产接口。
-  const fixture = dashboardFixtures()
   const types = { '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.json': 'application/json', '.css': 'text/css', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.webp': 'image/webp', '.woff2': 'font/woff2' }
   const server = http.createServer(async (req, res) => {
     try {

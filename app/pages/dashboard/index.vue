@@ -4,6 +4,7 @@ import { competitions } from '~/data/competitions'
 import { prepareCompetitions, competitionTimeLeft } from '~/utils/competitions'
 import { dashboardGridLayout, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
 import { dashboardUrgency, dashboardNextDeadlines, DASHBOARD_PREFERENCES_KEY, dashboardPreferences, readDashboardPreferences } from '../../../utils/dashboard-experience.mjs'
+import { dashboardCodeProfile } from '../../../utils/dashboard-members.mjs'
 
 useHead({ title: `任务看板 | ${site.shortName}`, meta: [{ name: 'robots', content: 'noindex, nofollow' }], bodyAttrs: { class: 'dashboard-tech' } })
 const route = useRoute()
@@ -30,7 +31,8 @@ const autoRotate = ref(true)
 const taskList = ref<HTMLElement | null>(null)
 const dashboardPage = ref<HTMLElement | null>(null)
 const layout = ref({ columns: 1, rows: 2, size: 2 })
-const { data: members } = await useAsyncData('dashboard:members', () => queryCollection('members').select('name', 'image').all())
+const { data: members } = await useAsyncData('dashboard:members', () => queryCollection('members').select('name', 'image', 'links').all())
+const codeProfile = (person: { name: string; href?: string; login?: string; memberName?: string }) => dashboardCodeProfile(person, members.value || [], site.logo)
 const memberNames = computed(() => (members.value || []).map(member => member.name))
 const memberProfile = (name: string) => ({
   href: dashboardMemberPath(name, memberNames.value),
@@ -437,8 +439,8 @@ onBeforeUnmount(() => {
         <p v-if="development.organization" class="dashboard-code-scope"><a :href="development.organization.href" target="_blank" rel="noopener noreferrer">{{ development.organization.name }}</a><span>{{ development.organization.unavailable ? '组织列表更新中断' : development.organization.includedCount === 0 ? '当前可读取范围内没有纳入的代码仓库' : '组织代码仓库' }}</span><span v-if="development.organization.includedCount !== undefined">已同步 {{ development.sources?.filter(source => !source.pending && !source.unavailable).length || 0 }} / {{ development.organization.includedCount }}<template v-if="development.organization.excludedCount"> · 已排除 {{ development.organization.excludedCount }}</template></span><time v-if="development.organization.updatedAt">列表更新 {{ formatTime(development.organization.updatedAt) }}</time></p>
         <ul v-if="development.sources?.length" class="dashboard-code-sources" aria-label="代码仓库同步状态" tabindex="0"><li v-for="source in development.sources" :key="source.key" :class="{ 'is-unavailable': source.unavailable || source.pending }"><a :href="source.href" target="_blank" rel="noopener noreferrer">{{ source.repo }}</a><small v-if="source.fork">Fork</small><span>{{ source.pending ? (source.unavailable ? '等待同步 · 部分失败' : '等待同步') : source.unavailable ? '更新中断' : '已同步' }}</span><time v-if="source.updatedAt" :datetime="new Date(source.updatedAt).toISOString()">{{ formatTime(source.updatedAt) }}</time></li></ul>
         <div class="dashboard-development-grid">
-          <div><h3>代码贡献榜 <small>{{ development.syncing ? '部分仓库 · 提交次数' : '提交次数' }}</small></h3><ol v-if="development.contributors.length" class="dashboard-code-ranks"><li v-for="person in development.contributors" :key="person.key || person.name"><DashboardCodeContributor :person="person" :profile="memberProfile(person.memberName || person.name)" /></li></ol><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步贡献记录' : development.unavailable ? '暂时无法读取贡献记录' : '暂无贡献记录' }}</p></div>
-          <div><h3>最近更新</h3><ul v-if="developmentEvents.length" class="dashboard-events"><li v-for="event in developmentEvents" :key="event.id"><a :href="event.href" target="_blank" rel="noopener noreferrer"><time>{{ formatTime(event.at) }}</time><span><strong>{{ event.actor }}</strong> {{ event.action }}<small>{{ event.repo }}</small></span><span aria-hidden="true">↗</span></a></li></ul><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步研发动态' : development.unavailable ? '暂时无法读取研发动态' : '暂无研发动态' }}</p></div>
+          <div><h3>代码贡献榜 <small>{{ development.syncing ? '部分仓库 · 提交次数' : '提交次数' }}</small></h3><ol v-if="development.contributors.length" class="dashboard-code-ranks"><li v-for="person in development.contributors" :key="person.key || person.name"><DashboardCodeContributor :person="person" :profile="codeProfile(person)" /></li></ol><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步贡献记录' : development.unavailable ? '暂时无法读取贡献记录' : '暂无贡献记录' }}</p></div>
+          <div><h3>最近更新</h3><ul v-if="developmentEvents.length" class="dashboard-events"><li v-for="event in developmentEvents" :key="event.id"><time>{{ formatTime(event.at) }}</time><div class="dashboard-event-content"><DashboardCodeIdentity :profile="codeProfile({ name: event.actor, href: event.actorHref, login: event.actorLogin })" /><span>{{ event.action }}</span><a class="dashboard-event-repo" :href="event.href" target="_blank" rel="noopener noreferrer">{{ event.repo }} <span aria-hidden="true">↗</span></a></div></li></ul><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步研发动态' : development.unavailable ? '暂时无法读取研发动态' : '暂无研发动态' }}</p></div>
         </div>
       </section>
     </template>
