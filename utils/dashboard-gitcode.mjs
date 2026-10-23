@@ -8,8 +8,11 @@ const diagnosticCodes = new Set(['SYNC_BUDGET_EXCEEDED', 'INVALID_ORGANIZATION_R
   'INVALID_ORGANIZATION_NAMESPACE', 'INVALID_ORGANIZATION_PAGINATION', 'ORGANIZATION_REPO_LIMIT',
   'INVALID_CONTRIBUTORS', 'INVALID_CODE_EVENTS', 'INVALID_CODE_PERSON', 'CONFLICTING_CODE_PERSON',
   'ABORT_LISTENERS_UNSUPPORTED', 'ABORT_SIGNAL_UNSUPPORTED', 'INVALID_TOKEN_FORMAT', 'UPSTREAM_FETCH_FAILED',
-  'UPSTREAM_BODY_FAILED', 'INVALID_REQUEST_HEADERS', 'UPSTREAM_REDIRECT'])
+  'UPSTREAM_BODY_FAILED', 'INVALID_REQUEST_HEADERS', 'UPSTREAM_REDIRECT', 'INVALID_GITCODE_REPOS',
+  'OPAQUE_REDIRECT', 'OPAQUE_RESPONSE', 'INVALID_HTTP_RESPONSE'])
 function diagnostic(error) {
+  if (error?.message === 'UPSTREAM_UNAUTHORIZED') return 'HTTP_401'
+  if (/^UPSTREAM_HTTP_[1-5]\d\d$/.test(error?.message || '')) return error.message.replace('UPSTREAM_', '')
   if (Number.isInteger(error?.status) && error.status >= 300 && error.status <= 599) return `HTTP_${error.status}`
   if (error?.name === 'SyntaxError') return 'INVALID_JSON_RESPONSE'
   if (error?.name === 'TypeError') return 'TYPE_ERROR'
@@ -142,13 +145,14 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
     async function cached(key, load) {
       const entry = cache.get(key)
       if (entry && now() < entry.next) return snapshot(entry)
-      if (!pending.has(key)) pending.set(key, Promise.resolve().then(load).then(value => {
+      let stage = 'REQUEST'
+      if (!pending.has(key)) pending.set(key, Promise.resolve().then(() => load(value => { stage = value })).then(value => {
         const fresh = { value, at: now(), next: now() + ttl, unavailable: false }
         cache.set(key, fresh)
         return fresh
       }).catch(error => {
         const stale = entry && entry.at !== undefined && now() - entry.at <= MAX_AGE
-        const failed = { value: stale ? entry.value : null, at: stale ? entry.at : undefined, next: now() + 60_000, unavailable: true, reason: diagnostic(error) }
+        const failed = { value: stale ? entry.value : null, at: stale ? entry.at : undefined, next: now() + 60_000, unavailable: true, reason: diagnostic(error), failureStage: stage }
         cache.set(key, failed)
         return failed
       }).finally(() => pending.delete(key)))
@@ -158,11 +162,13 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
     try {
       let repos = configured, discovery
       if (org) {
-        discovery = await cached('organization', async () => {
+        discovery = await cached('organization', async markStage => {
           const found = new Map(), seenPages = new Set(), ids = new Map()
           // 上限仅防止上游无限分页；超过时明确失败，不使用前10000项伪装完整列表。
           for (let page = 1; page <= 100; page++) {
+            markStage('REQUEST')
             const value = await request(`${API}/orgs/${encodeURIComponent(org)}/repos?type=all&repo_type=code&per_page=100&page=${page}`)
+            markStage('PARSE')
             if (!Array.isArray(value) || value.length > 100) throw new Error('INVALID_ORGANIZATION_REPOS')
             const pageKeys = []
             for (const row of value) {
@@ -192,7 +198,7 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
       repos = repos.filter(source => !excluded.has(source.key))
       const organization = org ? {
         name: org, href: `https://gitcode.com/${org}`, unavailable: discovery.unavailable,
-        authenticated: Boolean(env.DASHBOARD_GITCODE_TOKEN), reason: discovery.reason,
+        authenticated: Boolean(env.DASHBOARD_GITCODE_TOKEN), reason: discovery.reason, failureStage: discovery.failureStage,
         updatedAt: discovery.at, discoveredCount: discovery.value ? discoveredCount : undefined,
         includedCount: discovery.value ? repos.length : undefined, excludedCount: discovery.value ? discoveredCount - repos.length : undefined
       } : undefined
@@ -207,13 +213,15 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
           state.cursor = (index + 1) % jobs.length
           const { source, kind } = jobs[index]
           const base = `${API}/repos/${source.repo}`
-          await cached(`${source.key}:${kind}`, async () => {
+          await cached(`${source.key}:${kind}`, async markStage => {
             if (kind === 'people') {
               const value = await request(`${base}/contributors?type=authors`)
+              markStage('PARSE')
               if (!Array.isArray(value) || value.some(person => !person || !Number.isSafeInteger(person.contributions) || person.contributions < 0)) throw new Error('INVALID_CONTRIBUTORS')
               return value.map(person => ({ ...identity(person, mappings, source.key), count: person.contributions }))
             }
             const value = await request(`${base}/events?per_page=20`)
+            markStage('PARSE')
             if (!Array.isArray(value?.events)) throw new Error('INVALID_CODE_EVENTS')
             return value.events.slice(0, 20).flatMap((event, index) => {
               if (!event || event.filter_sensitive) return []
@@ -237,6 +245,7 @@ export function createDashboardGitcode({ json, now = Date.now, budgetMs = 8000, 
           pending: !rows || !recent || rows.next <= now() || recent.next <= now(), unavailable: Boolean(rows?.unavailable || recent?.unavailable),
           contributionsUnavailable: !rows || rows.unavailable, eventsUnavailable: !recent || recent.unavailable,
           contributionsReason: rows?.reason, eventsReason: recent?.reason,
+          contributionsFailureStage: rows?.failureStage, eventsFailureStage: recent?.failureStage,
           updatedAt: stamps.length ? Math.min(...stamps) : undefined })
         for (const person of rows?.value || []) {
           const existing = people.get(person.identity)

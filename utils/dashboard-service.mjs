@@ -55,12 +55,11 @@ function createScopedService({ fetcher, now }) {
         throw new Error(/redirect/i.test(message) ? 'UPSTREAM_REDIRECT'
           : /header|ByteString|ISO-8859-1|Latin.?1/i.test(message) ? 'INVALID_REQUEST_HEADERS' : 'UPSTREAM_FETCH_FAILED')
       }
-      if (!result.ok) {
-        const error = new Error(result.status === 401 ? 'UPSTREAM_UNAUTHORIZED' : 'UPSTREAM_UNAVAILABLE')
-        error.status = result.status
-        throw error
-      }
-      if (result.status === 204) return []
+      const status = Number(result.status)
+      if (status === 0) throw new Error(result.type === 'opaqueredirect' ? 'OPAQUE_REDIRECT' : 'OPAQUE_RESPONSE')
+      if (!Number.isInteger(status) || status < 100 || status > 599) throw new Error('INVALID_HTTP_RESPONSE')
+      if (status < 200 || status >= 300) throw new Error(status === 401 ? 'UPSTREAM_UNAUTHORIZED' : `UPSTREAM_HTTP_${status}`)
+      if (status === 204) return []
       try { return await result.json() }
       catch (error) {
         if (error?.name === 'SyntaxError') throw error

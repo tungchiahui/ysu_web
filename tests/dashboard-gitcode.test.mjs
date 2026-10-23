@@ -460,3 +460,20 @@ test('精简边缘运行时无需AbortSignal事件监听，父信号直达请求
     assert.equal(aborted, 1)
   } finally { globalThis.AbortController = Original; globalThis.clearTimeout = originalClearTimeout }
 })
+
+test('兼容字符串HTTP状态且不依赖ok或自定义Error属性，区分不透明响应与目录解析阶段', async () => {
+  const env = { DASHBOARD_ENABLED: 'true', DASHBOARD_PUBLIC: 'true', FEISHU_APP_ID: 'test', FEISHU_APP_SECRET: 'test',
+    FEISHU_BITABLE_APP_TOKEN: 'test', FEISHU_BITABLE_TABLE_ID: 'test', DASHBOARD_GITCODE_ORG: 'team' }
+  for (const [status, reason] of [['403', 'HTTP_403'], [0, 'OPAQUE_REDIRECT']]) {
+    const service = createDashboardService({ fetcher: async url => String(url).includes('open.feishu.cn')
+      ? { status: '200', json: async () => String(url).includes('/auth/') ? { code: 0, tenant_access_token: 'test-tenant' } : { code: 0, data: { items: [], has_more: false } } }
+      : { status, type: 'opaqueredirect' } })
+    const data = await (await service({ request: new Request('https://example.test/api/dashboard'), env })).json()
+    assert.deepEqual(data.tasks, [])
+    assert.equal(data.development.organization.reason, reason)
+    assert.equal(data.development.organization.failureStage, 'REQUEST')
+  }
+  const invalid = await createDashboardGitcode({ json: async () => [{ full_name: 'team/invalid path' }] })(env)
+  assert.equal(invalid.organization.reason, 'INVALID_GITCODE_REPOS')
+  assert.equal(invalid.organization.failureStage, 'PARSE')
+})
