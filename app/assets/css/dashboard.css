@@ -799,3 +799,52 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
   .is-fixed-screen .dashboard-development-grid h3 { flex: 0 0 auto; }
   .is-fixed-screen .dashboard-code-ranks, .is-fixed-screen .dashboard-events { flex: 1 1 0; min-height: 0; max-height: none; overflow-y: auto; }
 }
+
+/* 按内容测量完整任务行；测量树不参与页面布局、交互或每秒时钟更新。 */
+.is-paginated .dashboard-task-list { grid-template-rows: none; grid-auto-rows: max-content; }
+.is-paginated .dashboard-task { height: auto; }
+.is-paginated .dashboard-task-meta { margin-top: auto; padding-top: 10px; }
+.is-paginated .dashboard-task-top { flex-wrap: nowrap; }
+.is-paginated .dashboard-task-flags { flex-wrap: nowrap; flex-shrink: 0; }
+.dashboard-task-measure { position: fixed; top: 0; left: -100000px; visibility: hidden; pointer-events: none; contain: layout style; }
+.dashboard-page .dashboard-team-name { white-space: nowrap; }
+@media (min-width: 1200px) {
+  .is-screen.dashboard-page .dashboard-heading { grid-template-columns: clamp(280px, 14.5vw, 380px) minmax(0, 1fr) clamp(280px, 14.5vw, 380px); }
+}
+@media (min-width: 1400px) {
+  .dashboard-page:not(.is-screen) .dashboard-heading { grid-template-columns: minmax(280px, 1fr) minmax(0, 3.7fr) minmax(280px, 1fr); }
+}
+
+.dashboard-scroll-block { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.dashboard-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; flex: 0 0 auto; }
+.dashboard-list-heading h3 { margin: 0; }
+.dashboard-page .dashboard-scroll-toggle { flex: 0 0 auto; padding: 3px 6px; font-size: max(12px, calc(var(--dashboard-text) * .65)); font-weight: 500; white-space: nowrap; }
+.dashboard-page .dashboard-scroll-toggle:disabled { cursor: default; opacity: .55; }
+.dashboard-scroll-viewport { overflow-y: auto; min-height: 0; scrollbar-gutter: stable; overflow-anchor: none; }
+.dashboard-scroll-viewport:focus-visible { outline: 1px solid var(--cyan); outline-offset: 2px; }
+@media (min-width: 1000px) {
+  .dashboard-scroll-viewport { max-height: clamp(180px, 25vh, 360px); }
+}
+@media (min-width: 1200px) and (min-height: 700px) {
+  .is-fixed-screen .dashboard-ranks > .dashboard-panel { display: flex; flex-direction: column; overflow: hidden; }
+  .is-fixed-screen .dashboard-scroll-block { flex: 1 1 0; min-height: 0; }
+  .is-fixed-screen .dashboard-scroll-viewport { flex: 1 1 0; max-height: none; }
+  .is-fixed-screen .dashboard-development { min-height: 160px; }
+  .is-fixed-screen .dashboard-development-grid > .dashboard-scroll-block { display: flex; }
+  .is-fixed-screen .dashboard-development-grid h3 { margin: 0; }
+  .is-fixed-screen .dashboard-scroll-viewport .dashboard-code-ranks,
+  .is-fixed-screen .dashboard-scroll-viewport .dashboard-events { overflow: visible; max-height: none; }
+}
+
+.dashboard-scroll-viewport { overflow-x: hidden; }
+/* 1080p 的横框采用两列：名称和参考信息合组，保留更大的标题宽度。 */
+@media (min-width: 1800px) and (max-width: 2199px) {
+  .is-screen .dashboard-heading-event { grid-template-columns: minmax(0, 1fr) max-content; }
+  .is-screen .dashboard-heading-event:nth-child(2) { grid-template-columns: max-content minmax(0, 1fr); }
+  .is-screen .dashboard-heading-event-info { display: block; grid-column: 1; grid-row: 1; }
+  .is-screen .dashboard-heading-event h2 { font-size: 18px; }
+  .is-screen .dashboard-heading-event-meta { text-align: left; }
+  .is-screen .dashboard-heading-event-count { grid-column: 2; }
+  .is-screen .dashboard-heading-event:nth-child(2) .dashboard-heading-event-info { grid-column: 2; }
+  .is-screen .dashboard-heading-event:nth-child(2) .dashboard-heading-event-meta { text-align: right; }
+}

@@ -1,4 +1,4 @@
-export { dashboardGridLayout, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks } from '../../utils/dashboard-data.mjs'
+export { dashboardGridLayout, dashboardTaskPages, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks } from '../../utils/dashboard-data.mjs'
 
 export type DashboardPerson = { key: string; name: string; avatar: string }
 export type DashboardTask = {

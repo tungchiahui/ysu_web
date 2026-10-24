@@ -46,6 +46,26 @@ export function dashboardGridLayout(width, height, gap = 10, fontSize = 16, card
   return { columns, rows, size: columns * rows }
 }
 
+// 同一行取最高卡片，按完整行分页；短行不会被其他行的长内容拉高。
+export function dashboardTaskPages(heights, columns, availableHeight, gap = 10) {
+  const pages = []
+  const count = Math.max(1, Math.floor(columns))
+  let page = { start: 0, end: 0, height: 0, rows: 0 }
+  for (let start = 0; start < heights.length; start += count) {
+    const end = Math.min(start + count, heights.length)
+    const height = Math.max(1, ...heights.slice(start, end))
+    if (page.rows && page.height + gap + height > availableHeight) {
+      pages.push(page)
+      page = { start, end: start, height: 0, rows: 0 }
+    }
+    page.height += (page.rows ? gap : 0) + height
+    page.end = end
+    page.rows++
+  }
+  if (page.rows) pages.push(page)
+  return pages
+}
+
 export function dashboardMemberPath(name, profileNames = []) {
   return profileNames.includes(name) ? `/team/${encodeURIComponent(name)}` : ''
 }
@@ -105,5 +125,5 @@ export function dashboardRanks(tasks, status) {
       totals.set(person.key, entry)
     }
   }
-  return [...totals.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN')).slice(0, 8)
+  return [...totals.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-CN'))
 }

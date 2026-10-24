@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { dashboardGridLayout, dashboardMemberPath, normalizeDashboardRecords, dashboardTaskState, selectDashboardTasks, dashboardRanks, safeDashboardUrl } from '../utils/dashboard-data.mjs'
+import { dashboardTaskPages, dashboardGridLayout, dashboardMemberPath, normalizeDashboardRecords, dashboardTaskState, selectDashboardTasks, dashboardRanks, safeDashboardUrl } from '../utils/dashboard-data.mjs'
 import { createDashboardService } from '../utils/dashboard-service.mjs'
 import { dashboardFixtures } from './fixtures/dashboard.mjs'
 import { onRequest } from '../edge-functions/api/dashboard.js'
@@ -240,4 +240,24 @@ test('成员入口直达已有档案，缺少档案时不生成链接', () => {
   } }])[0]
   assert.deepEqual(task.publishers, [{ key: 'p', name: '成员甲', avatar: 'https://example.test/avatar.png' }])
   assert(!JSON.stringify(task).includes('private@example.test'))
+})
+
+
+test('按整行自然高度分页，长行只影响本行且不丢失尾页', () => {
+  assert.deepEqual(dashboardTaskPages([200, 190, 170, 180, 220, 180], 2, 400, 10), [
+    { start: 0, end: 4, height: 390, rows: 2 }, { start: 4, end: 6, height: 220, rows: 1 }
+  ])
+  assert.deepEqual(dashboardTaskPages([150, 150, 150, 150, 150], 2, 470, 10), [
+    { start: 0, end: 5, height: 470, rows: 3 }
+  ])
+  assert.deepEqual(dashboardTaskPages([], 2, 400), [])
+  assert.deepEqual(dashboardTaskPages([300, 200], 1, 250), [
+    { start: 0, end: 1, height: 300, rows: 1 }, { start: 1, end: 2, height: 200, rows: 1 }
+  ])
+})
+
+
+test('任务榜返回全部人员供滚动展示，不只保留前八名', () => {
+  const tasks = Array.from({ length: 15 }, (_, i) => ({ status: 'todo', assignees: [{ key: String(i), name: `成员${i}` }] }))
+  assert.equal(dashboardRanks(tasks, 'todo').length, 15)
 })

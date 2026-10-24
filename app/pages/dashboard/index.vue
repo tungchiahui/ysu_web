@@ -2,8 +2,8 @@
 import { site } from '~/data/site'
 import { competitions } from '~/data/competitions'
 import { prepareCompetitions, competitionTimeLeft } from '~/utils/competitions'
-import { dashboardGridLayout, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
-import { dashboardUrgency, DASHBOARD_PREFERENCES_KEY, dashboardPreferences, readDashboardPreferences } from '../../../utils/dashboard-experience.mjs'
+import { dashboardGridLayout, dashboardTaskPages, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
+import { DASHBOARD_PREFERENCES_KEY, dashboardPreferences, readDashboardPreferences } from '../../../utils/dashboard-experience.mjs'
 import { dashboardCodeProfile } from '../../../utils/dashboard-members.mjs'
 
 useHead({ title: `任务看板 | ${site.shortName}`, meta: [{ name: 'robots', content: 'noindex, nofollow' }], bodyAttrs: { class: 'dashboard-tech' } })
@@ -34,7 +34,9 @@ const taskList = ref<HTMLElement | null>(null)
 const dashboardPage = ref<HTMLElement | null>(null)
 const layout = ref({ columns: 1, rows: 2, size: 2 })
 const fixedGridHeight = ref<number | null>(null)
-const developmentEventLimit = ref(2)
+const taskMeasure = ref<HTMLElement | null>(null)
+const measurementTime = ref(0)
+const taskPages = ref([{ start: 0, end: 2, height: 0, rows: 1 }])
 const { data: members } = await useAsyncData('dashboard:members', () => queryCollection('members').select('name', 'image', 'links').all())
 const codeProfile = (person: { name: string; href?: string; login?: string; memberName?: string }) => dashboardCodeProfile(person, members.value || [], site.logo)
 const memberNames = computed(() => (members.value || []).map(member => member.name))
@@ -43,6 +45,7 @@ const memberProfile = (name: string) => ({
   image: members.value?.find(member => member.name === name)?.image || ''
 })
 let layoutObserver: ResizeObserver | undefined
+let layoutFrame = 0
 let authorization = ''
 let request: AbortController | undefined
 let pollTimer: ReturnType<typeof setTimeout> | undefined
@@ -75,9 +78,12 @@ const statuses = computed(() => [
 const visibleTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, {
   status: selectedStatus.value, group: selectedGroup.value, search: search.value, now: currentTime.value
 }))
-const pageSize = computed(() => layout.value.size)
-const pages = computed(() => paginated.value ? Math.max(1, Math.ceil(visibleTasks.value.length / pageSize.value)) : 1)
-const pageTasks = computed(() => paginated.value ? visibleTasks.value.slice(pageIndex.value * pageSize.value, (pageIndex.value + 1) * pageSize.value) : visibleTasks.value)
+const pageSize = computed(() => {
+  const page = taskPages.value[pageIndex.value]
+  return page ? page.end - page.start : layout.value.size
+})
+const pages = computed(() => paginated.value ? Math.max(1, taskPages.value.length) : 1)
+const pageTasks = computed(() => paginated.value ? visibleTasks.value.slice(taskPages.value[pageIndex.value]?.start || 0, taskPages.value[pageIndex.value]?.end || layout.value.size) : visibleTasks.value)
 const rankedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value }))
 const todoRanks = computed(() => dashboardRanks(rankedTasks.value, 'todo'))
 const doneRanks = computed(() => dashboardRanks(rankedTasks.value, 'done'))
@@ -85,14 +91,8 @@ const activeTask = computed(() => tasks.value.find(task => task.id === selectedT
 const overlayOpen = computed(() => Boolean(activeTask.value || showCompletion.value))
 const completionScope = computed(() => `${selectedGroup.value === 'all' ? '全部组别' : selectedGroup.value}${search.value.trim() ? ' · 当前关键词筛选' : ''}`)
 const development = computed(() => data.value?.development || data.value?.github)
-const developmentEvents = computed(() => {
-  const events = development.value?.events || []
-  const size = fixedScreen.value ? developmentEventLimit.value : screen.value ? 2 : 5
-  const start = Math.floor(currentTime.value / 20_000) % Math.max(1, Math.ceil(events.length / size)) * size
-  return events.slice(start, start + size)
-})
+const developmentEvents = computed(() => development.value?.events || [])
 const updateInterrupted = computed(() => Boolean(data.value && (data.value.stale || message.value || currentTime.value - data.value.updatedAt > 90_000)))
-const priorityLabels = { high: '高优先级', medium: '中优先级', low: '低优先级' }
 const formatTime = (value?: number | null) => value ? new Intl.DateTimeFormat('zh-CN', {
   timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false
 }).format(value) : '未设置'
@@ -100,7 +100,7 @@ const clock = computed(() => currentTime.value ? new Intl.DateTimeFormat('zh-CN'
   timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
 }).format(currentTime.value) : '')
 
-watch([selectedStatus, selectedGroup, search, pageSize, paginated], () => { pageIndex.value = 0; lastRotation = currentTime.value })
+watch([selectedStatus, selectedGroup, search, paginated], () => { pageIndex.value = 0; lastRotation = currentTime.value })
 watch(pages, value => { pageIndex.value = Math.min(pageIndex.value, value - 1) })
 watch(activeTask, task => { if (!task) selectedTaskId.value = null })
 watch(data, value => { if (!value) { selectedTaskId.value = null; showCompletion.value = false } })
@@ -242,12 +242,10 @@ const resumeRefresh = () => {
   currentTime.value = Date.now()
   if (!['locked', 'closed'].includes(phase.value)) void refresh()
 }
-const resizeDevelopment = (panel: HTMLElement, height: number) => {
-  const eventHeight = panel.querySelector<HTMLElement>('.dashboard-events li')?.getBoundingClientRect().height || 78
-  // 标题和小标题保留空间，按可读行高增加条目，仍按原 20 秒节奏轮播。
-  developmentEventLimit.value = Math.max(1, Math.floor((height - 100) / eventHeight))
-}
 const resizeScreen = () => {
+  if (!layoutFrame) layoutFrame = requestAnimationFrame(() => { layoutFrame = 0; measureScreen() })
+}
+const measureScreen = () => {
   const candidate = screen.value && window.matchMedia('(min-width: 1200px) and (min-height: 700px)').matches
   // 先按固定大屏样式实测，避免普通模式较大的间距误判为没有空间。
   dashboardPage.value?.classList.toggle('is-fixed-screen', candidate)
@@ -259,7 +257,7 @@ const resizeScreen = () => {
     }, 0)
   // 短屏或顶部内容较多时解除固定高度，避免任务面板被压成零高度。
   const developmentPanel = dashboardPage.value?.querySelector<HTMLElement>('.dashboard-development')
-  const developmentReserve = developmentPanel ? 226 : 0 // 210px 基础展示区和 16px 区间距。
+  const developmentReserve = developmentPanel ? Math.min(260, Math.max(160, window.innerHeight * .18)) + 16 : 0
   viewportFitsScreen.value = candidate && window.innerHeight - 32 - occupied - developmentReserve >= 360
   dashboardPage.value?.classList.toggle('is-fixed-screen', fixedScreen.value)
   desktopPagination.value = window.matchMedia('(min-width: 1000px)').matches
@@ -272,15 +270,20 @@ const resizeScreen = () => {
         return total + element.getBoundingClientRect().height + (Number.parseFloat(childStyle.marginTop) || 0) + (Number.parseFloat(childStyle.marginBottom) || 0)
       }, 0) + Number.parseFloat(style.paddingTop) + Number.parseFloat(style.paddingBottom) + Number.parseFloat(style.borderTopWidth) + Number.parseFloat(style.borderBottomWidth)
     ) : null
-    if (fixedGridHeight.value !== null && developmentPanel && dashboardPage.value && panel) {
-      resizeDevelopment(developmentPanel, dashboardPage.value.getBoundingClientRect().bottom - panel.getBoundingClientRect().top - fixedGridHeight.value - 16)
-    }
+
     return
   }
-  const box = taskList.value.getBoundingClientRect()
+  let box = taskList.value.getBoundingClientRect()
   // 桌面普通模式用独立的视口预算分页，不使用完整任务列表的高度，避免反馈增长；窄屏连续滚动。
   const fontSize = Number.parseFloat(getComputedStyle(taskList.value).fontSize) || 16
-  const cardHeight = Number.parseFloat(getComputedStyle(taskList.value).gridAutoRows) || 224 * Math.max(1, fontSize / 16)
+  let gap = fixedScreen.value ? 10 : 14
+  let columns = dashboardGridLayout(box.width, 0, gap, fontSize).columns
+  if (taskMeasure.value) {
+    taskMeasure.value.style.width = `${box.width}px`
+    taskMeasure.value.style.setProperty('--dashboard-columns', String(columns))
+  }
+  let cardHeights = [...(taskMeasure.value?.children || [])].map(element => element.getBoundingClientRect().height)
+  let cardHeight = Math.max(...cardHeights, 180 * Math.max(1, fontSize / 16))
   const grid = dashboardPage.value?.querySelector<HTMLElement>('.dashboard-grid')
   const panel = taskList.value.closest<HTMLElement>('.dashboard-tasks')
   const pager = panel?.querySelector<HTMLElement>('.dashboard-pagination')
@@ -289,28 +292,38 @@ const resizeScreen = () => {
   const panelBottom = panelStyle ? Number.parseFloat(panelStyle.paddingBottom) + Number.parseFloat(panelStyle.borderBottomWidth) : 0
   const chrome = panel ? box.top - panel.getBoundingClientRect().top + (pager?.getBoundingClientRect().height || 0) + panelBottom : 0
   const available = dashboardPage.value && grid ? dashboardPage.value.getBoundingClientRect().bottom - grid.getBoundingClientRect().top : 0
-  const height = fixedScreen.value ? Math.max(0, available - developmentReserve - chrome) : Math.max(300, Math.min(window.innerHeight * .62, 900))
-  if (fixedScreen.value && height < cardHeight) {
+  let height = fixedScreen.value ? Math.max(0, available - developmentReserve - chrome) : Math.max(300, Math.min(window.innerHeight * .62, 900))
+  const firstRowsHeight = cardHeights.length > columns
+    ? Math.max(...cardHeights.slice(0, columns)) + gap + Math.max(...cardHeights.slice(columns, columns * 2)) : cardHeight
+  // 浏览器工具栏或缩放挤占高度时允许页面滚动，不把大量任务压成一行。
+  if (fixedScreen.value && height < firstRowsHeight) {
     viewportFitsScreen.value = false
     dashboardPage.value?.classList.remove('is-fixed-screen')
     fixedGridHeight.value = null
-    return
+    box = taskList.value.getBoundingClientRect()
+    gap = 14
+    columns = dashboardGridLayout(box.width, 0, gap, fontSize).columns
+    if (taskMeasure.value) {
+      taskMeasure.value.style.width = `${box.width}px`
+      taskMeasure.value.style.setProperty('--dashboard-columns', String(columns))
+    }
+    cardHeights = [...(taskMeasure.value?.children || [])].map(element => element.getBoundingClientRect().height)
+    cardHeight = Math.max(...cardHeights, 180 * Math.max(1, fontSize / 16))
+    height = Math.max(300, Math.min(window.innerHeight * .62, 900))
   }
-  layout.value = dashboardGridLayout(box.width, height, fixedScreen.value ? 10 : 14, fontSize, cardHeight)
-  const usedRows = Math.min(layout.value.rows, Math.max(1, Math.ceil(pageTasks.value.length / layout.value.columns)))
-  fixedGridHeight.value = fixedScreen.value && developmentPanel ? Math.ceil(chrome + usedRows * cardHeight + (usedRows - 1) * 10) : null
-  if (fixedScreen.value && developmentPanel) {
-    const developmentHeight = available - (fixedGridHeight.value || chrome + height) - 16
-    resizeDevelopment(developmentPanel, developmentHeight)
-  }
+  layout.value = dashboardGridLayout(box.width, height, gap, fontSize, cardHeight)
+  taskPages.value = dashboardTaskPages(cardHeights.length ? cardHeights : visibleTasks.value.map(() => cardHeight), columns, height, gap)
+  const currentPage = taskPages.value[Math.min(pageIndex.value, taskPages.value.length - 1)]
+  fixedGridHeight.value = fixedScreen.value && developmentPanel && currentPage ? Math.ceil(chrome + currentPage.height) : null
 }
 watch(taskList, (element, previous) => {
   if (previous) layoutObserver?.unobserve(previous)
   if (element) layoutObserver?.observe(element)
   void nextTick(resizeScreen)
 }, { flush: 'post' })
+watch(taskMeasure, () => { void nextTick(resizeScreen) })
 watch([screen, showSyncDetails], () => { void nextTick(resizeScreen) })
-watch([data, selectedGroup, search, selectedStatus, pageIndex, () => pageTasks.value.length], () => { void nextTick(resizeScreen) }, { flush: 'post' })
+watch([data, selectedGroup, search, selectedStatus, pageIndex, () => pageTasks.value.length], () => { measurementTime.value = currentTime.value; void nextTick(resizeScreen) }, { flush: 'post' })
 onMounted(() => {
   currentTime.value = Date.now()
   lastRotation = currentTime.value
@@ -343,6 +356,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   layoutObserver?.disconnect()
+  cancelAnimationFrame(layoutFrame)
   disposed = true
   request?.abort()
   clearTimeout(pollTimer)
@@ -430,17 +444,16 @@ onBeforeUnmount(() => {
           <div><span>已完成</span><strong>{{ counts.done }}</strong><button type="button" class="dashboard-text-button dashboard-trend-trigger" aria-label="查看完成趋势" @click="selectedTaskId = null; showCompletion = true">完成趋势 →</button></div>
         </section>
       </div>
+      <div v-if="paginated && visibleTasks.length" ref="taskMeasure" class="dashboard-task-measure dashboard-task-list" aria-hidden="true" inert>
+        <article v-for="task in visibleTasks" :key="task.id" class="dashboard-task" :class="dashboardTaskState(task, measurementTime)"><DashboardTaskContent :task="task" :current-time="measurementTime" :paginated="true" :profile-for="memberProfile" /></article>
+      </div>
       <div class="dashboard-grid">
         <section class="dashboard-panel dashboard-tasks" aria-label="任务列表">
           <div class="dashboard-panel-heading"><h2>任务进展</h2><span>{{ visibleTasks.length }} 项</span></div>
           <div class="dashboard-tabs" aria-label="任务状态筛选"><button v-for="status in statuses" :key="status.value" type="button" :aria-pressed="selectedStatus === status.value" :class="{ active: selectedStatus === status.value }" @click="selectedStatus = status.value">{{ status.label }} <span>{{ status.count }}</span></button></div>
           <div v-if="pageTasks.length" ref="taskList" class="dashboard-task-list" :style="{ '--dashboard-columns': layout.columns, '--dashboard-rows': layout.rows }">
             <article v-for="task in pageTasks" :key="task.id" class="dashboard-task" :class="dashboardTaskState(task, currentTime)" @click="openCard($event, task.id)">
-              <div class="dashboard-task-top"><span v-if="task.group" class="dashboard-tag" :title="task.group">{{ task.group }}</span><div class="dashboard-task-flags"><span v-if="dashboardUrgency(task, currentTime)" class="dashboard-urgency" :class="dashboardUrgency(task, currentTime)!.level">{{ dashboardUrgency(task, currentTime)!.label }}</span><span class="dashboard-priority" :class="task.priority">{{ priorityLabels[task.priority] }}</span></div></div>
-              <h3><button type="button" class="dashboard-task-title" :aria-label="`查看任务详情：${task.title}`" @click="openTask(task.id)">{{ task.title }}</button></h3>
-              <div class="dashboard-assignees"><span class="dashboard-label">执行人</span><span v-if="!task.assignees.length">待分配</span><DashboardMember v-for="person in paginated ? task.assignees.slice(0, 2) : task.assignees" :key="person.key" :person="person" :profile="memberProfile(person.name)" /><button v-if="paginated && task.assignees.length > 2" type="button" class="dashboard-more-people" :aria-label="`另有${task.assignees.length - 2}位执行人，查看全部`" @click="openTask(task.id)">+{{ task.assignees.length - 2 }}</button></div>
-              <p v-if="task.note" class="dashboard-note" :title="task.note">{{ task.note }}</p>
-              <div class="dashboard-task-meta" :class="{ 'has-publisher': task.publisher }"><DashboardTaskTiming :task="task" :now="currentTime" /><span v-if="task.publisher" class="dashboard-publishers"><span class="dashboard-publisher-label">发布人</span> <DashboardMember v-for="person in task.publishers || [{ key: task.publisher, name: task.publisher, avatar: '' }]" :key="person.key" :person="person" :profile="memberProfile(person.name)" /></span></div>
+              <DashboardTaskContent :task="task" :current-time="currentTime" :paginated="paginated" :profile-for="memberProfile" @open="openTask" />
             </article>
           </div>
           <div v-else class="dashboard-empty">{{ tasks.length ? '没有匹配的任务。' : '暂无任务，新的进展会显示在这里。' }}</div>
@@ -449,9 +462,11 @@ onBeforeUnmount(() => {
 
         <aside class="dashboard-ranks" aria-label="个人任务统计">
           <section v-for="rank in [{ label: '待办任务榜', rows: todoRanks }, { label: '已完成任务榜', rows: doneRanks }]" :key="rank.label" class="dashboard-panel">
-            <div class="dashboard-panel-heading"><h2>{{ rank.label }}</h2><span>按任务数</span></div>
-            <ol v-if="rank.rows.length" class="dashboard-rank-list"><li v-for="(person, index) in rank.rows.slice(0, screen ? 4 : 8)" :key="person.key" :style="{ '--rank-width': `${person.count / (rank.rows[0]?.count || 1) * 100}%` }"><span class="dashboard-rank-number">{{ String(index + 1).padStart(2, '0') }}</span><DashboardMember class="dashboard-rank-name" :person="person" :profile="memberProfile(person.name)" /><strong>{{ person.count }}<small> 项</small></strong></li></ol>
+            <DashboardAutoScroll :label="rank.label" :suspended="overlayOpen" heading-class="dashboard-panel-heading">
+            <template #heading><h2>{{ rank.label }}</h2></template>
+            <ol v-if="rank.rows.length" class="dashboard-rank-list"><li v-for="(person, index) in rank.rows" :key="person.key" :style="{ '--rank-width': `${person.count / (rank.rows[0]?.count || 1) * 100}%` }"><span class="dashboard-rank-number">{{ String(index + 1).padStart(2, '0') }}</span><DashboardMember class="dashboard-rank-name" :person="person" :profile="memberProfile(person.name)" /><strong>{{ person.count }}<small> 项</small></strong></li></ol>
             <p v-else class="dashboard-empty">暂无记录</p>
+            </DashboardAutoScroll>
           </section>
         </aside>
       </div>
@@ -463,8 +478,8 @@ onBeforeUnmount(() => {
           <ul v-if="development.sources?.length" class="dashboard-code-sources" aria-label="代码仓库同步状态" tabindex="0"><li v-for="source in development.sources" :key="source.key" :class="{ 'is-unavailable': source.unavailable || source.pending }"><a :href="source.href" target="_blank" rel="noopener noreferrer">{{ source.repo }}</a><small v-if="source.fork">Fork</small><span>{{ source.pending ? (source.unavailable ? '等待同步 · 部分失败' : '等待同步') : source.unavailable ? '更新中断' : '已同步' }}</span><time v-if="source.updatedAt" :datetime="new Date(source.updatedAt).toISOString()">{{ formatTime(source.updatedAt) }}</time></li></ul>
         </div>
         <div class="dashboard-development-grid">
-          <div><h3>代码贡献榜 <small>{{ development.syncing ? '部分仓库 · 提交次数' : '提交次数' }}</small></h3><ol v-if="development.contributors.length" class="dashboard-code-ranks"><li v-for="person in development.contributors" :key="person.key || person.name"><DashboardCodeContributor :person="person" :profile="codeProfile(person)" /></li></ol><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步贡献记录' : development.unavailable ? '暂时无法读取贡献记录' : '暂无贡献记录' }}</p></div>
-          <div><h3>最近更新</h3><ul v-if="developmentEvents.length" class="dashboard-events"><li v-for="event in developmentEvents" :key="event.id"><time>{{ formatTime(event.at) }}</time><div class="dashboard-event-content"><DashboardCodeIdentity :profile="codeProfile({ name: event.actor, href: event.actorHref, login: event.actorLogin })" /><span>{{ event.action }}</span><a class="dashboard-event-repo" :href="event.href" target="_blank" rel="noopener noreferrer">{{ event.repo }} <span aria-hidden="true">↗</span></a></div></li></ul><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步研发动态' : development.unavailable ? '暂时无法读取研发动态' : '暂无研发动态' }}</p></div>
+          <DashboardAutoScroll label="代码贡献榜" :suspended="overlayOpen"><template #heading><h3>代码贡献榜 <small>{{ development.syncing ? '部分仓库 · 提交次数' : '提交次数' }}</small></h3></template><ol v-if="development.contributors.length" class="dashboard-code-ranks"><li v-for="person in development.contributors" :key="person.key || person.name"><DashboardCodeContributor :person="person" :profile="codeProfile(person)" /></li></ol><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步贡献记录' : development.unavailable ? '暂时无法读取贡献记录' : '暂无贡献记录' }}</p></DashboardAutoScroll>
+          <DashboardAutoScroll label="最近更新" :suspended="overlayOpen"><template #heading><h3>最近更新</h3></template><ul v-if="developmentEvents.length" class="dashboard-events"><li v-for="event in developmentEvents" :key="event.id"><time>{{ formatTime(event.at) }}</time><div class="dashboard-event-content"><DashboardCodeIdentity :profile="codeProfile({ name: event.actor, href: event.actorHref, login: event.actorLogin })" /><span>{{ event.action }}</span><a class="dashboard-event-repo" :href="event.href" target="_blank" rel="noopener noreferrer">{{ event.repo }} <span aria-hidden="true">↗</span></a></div></li></ul><p v-else class="dashboard-empty">{{ development.syncing ? '正在同步研发动态' : development.unavailable ? '暂时无法读取研发动态' : '暂无研发动态' }}</p></DashboardAutoScroll>
         </div>
       </section>
     </template>
