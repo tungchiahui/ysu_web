@@ -1,3 +1,5 @@
+import { compareDashboardScores } from './dashboard-data.mjs'
+
 const DAY = 86_400_000
 const BEIJING_OFFSET = 8 * 3600_000
 const dayStart = now => Math.floor((now + BEIJING_OFFSET) / DAY) * DAY - BEIJING_OFFSET
@@ -27,9 +29,8 @@ export function dashboardNextDeadlines(tasks, now) {
   const pending = tasks.filter(task => task.status !== 'done' && Number.isFinite(task.deadline) && task.deadline > now)
   if (!pending.length) return []
   const earliest = Math.min(...pending.map(task => task.deadline))
-  const priorities = ['high', 'medium', 'low']
   return pending.filter(task => task.deadline === earliest).sort((a, b) =>
-    priorities.indexOf(a.priority) - priorities.indexOf(b.priority) || a.id.localeCompare(b.id))
+    compareDashboardScores(a, b) || a.id.localeCompare(b.id))
 }
 
 export const DASHBOARD_PREFERENCES_KEY = 'ysu-dashboard-display-v1'

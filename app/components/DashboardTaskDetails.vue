@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { DashboardTask } from '~/utils/dashboard'
-import { dashboardTaskState, dashboardTaskGroups } from '~/utils/dashboard'
+import { dashboardTaskState, dashboardTaskGroups, dashboardScoreLabel } from '~/utils/dashboard'
 import { dashboardUrgency } from '../../utils/dashboard-experience.mjs'
 const props = defineProps<{
   task: DashboardTask; now: number
   profileFor: (name: string) => { href: string; image: string }
 }>()
 const emit = defineEmits<{ close: [] }>()
-const labels = { high: '高优先级', medium: '中优先级', low: '低优先级' }
 const state = computed(() => dashboardTaskState(props.task, props.now))
 const urgency = computed(() => dashboardUrgency(props.task, props.now))
 const format = (value: number | null) => value ? new Intl.DateTimeFormat('zh-CN', {
@@ -21,7 +20,7 @@ const format = (value: number | null) => value ? new Intl.DateTimeFormat('zh-CN'
     <h2 id="dashboard-task-detail-title">{{ task.title }}</h2>
     <div class="dashboard-detail-tags">
       <span class="dashboard-detail-state">{{ state === 'done' ? '已完成' : state === 'overdue' ? '已逾期' : '未完成' }}</span>
-      <span class="dashboard-priority" :class="task.priority">{{ labels[task.priority] }}</span>
+      <span class="dashboard-score" :class="{ 'is-invalid': task.scoreInvalid }">{{ dashboardScoreLabel(task) }}</span>
       <span v-if="urgency && state !== 'overdue'" class="dashboard-urgency" :class="urgency.level">{{ urgency.label }}</span>
     </div>
     <dl class="dashboard-detail-fields">

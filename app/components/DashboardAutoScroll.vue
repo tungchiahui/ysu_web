@@ -63,6 +63,7 @@ onBeforeUnmount(() => { stop(); observer?.disconnect(); media?.removeEventListen
       <slot name="heading" />
       <button v-if="desktop" type="button" class="dashboard-scroll-toggle" :disabled="!overflow" :aria-label="`${paused ? '继续' : '暂停'}${label}滚动`" :aria-pressed="paused" @click="paused = !paused">{{ !overflow ? '无需滚动' : paused ? '继续滚动' : '暂停滚动' }}</button>
     </div>
+    <slot name="description" />
     <div ref="viewport" class="dashboard-scroll-viewport" :tabindex="overflow ? 0 : undefined" :aria-label="`${label}列表`" @mouseenter="hovering = true" @mouseleave="hovering = false" @focusin="focused = true" @focusout="focusOut" @wheel.passive="manualScroll" @touchstart.passive="manualScroll" @keydown="['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes($event.key) && manualScroll()">
       <div ref="content"><slot /></div>
     </div>

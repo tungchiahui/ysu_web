@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { dashboardTaskPages, dashboardGridLayout, dashboardMemberPath, normalizeDashboardRecords, dashboardTaskState, selectDashboardTasks, dashboardRanks, safeDashboardUrl } from '../utils/dashboard-data.mjs'
+import { dashboardTaskPages, dashboardGridLayout, dashboardMemberPath, normalizeDashboardRecords, dashboardTaskState, selectDashboardTasks, dashboardRanks, dashboardScoreboard, dashboardScoreLabel, safeDashboardUrl } from '../utils/dashboard-data.mjs'
 import { createDashboardService } from '../utils/dashboard-service.mjs'
 import { dashboardFixtures } from './fixtures/dashboard.mjs'
 import { onRequest } from '../edge-functions/api/dashboard.js'
@@ -257,4 +257,103 @@ test('同一窗口下每页容量固定，完整页均为相同行数，尾页�
 test('任务榜返回全部人员供滚动展示，不只保留前八名', () => {
   const tasks = Array.from({ length: 15 }, (_, i) => ({ status: 'todo', assignees: [{ key: String(i), name: `成员${i}` }] }))
   assert.equal(dashboardRanks(tasks, 'todo').length, 15)
+})
+
+test('分值读取数字或数字单选，区分零分、空白和异常，不换算旧优先级', () => {
+  const parse = (value, overrides = {}) => normalizeDashboardRecords([{ record_id: 'score', fields: {
+    任务名称: '计分任务', 完成情况: '已完成', 分值: value, 优先级: '高', 自定义分值: '2.5'
+  } }], overrides)[0]
+  for (const [value, expected] of [[5, 5], [' 4 ', 4], [0, 0], ['0', 0], ['2.5', 2.5]]) {
+    const task = parse(value)
+    assert.equal(task.score, expected)
+    assert.equal(task.scoreInvalid, false)
+    assert.equal(dashboardScoreLabel(task), `${expected}分`)
+  }
+  for (const value of [undefined, null, '', '  ']) {
+    assert.equal(parse(value).score, null)
+    assert.equal(parse(value).scoreInvalid, false)
+    assert.equal(dashboardScoreLabel(parse(value)), '未设分')
+  }
+  for (const value of ['待核定', '5分', '高', '-1', -1, Infinity, NaN, true, {}, ['5'], '2.5.1', Number.MAX_SAFE_INTEGER + 1]) {
+    assert.equal(parse(value).score, null)
+    assert.equal(parse(value).scoreInvalid, true)
+    assert.equal(dashboardScoreLabel(parse(value)), '分值异常')
+  }
+  assert.equal(parse(5, { score: '自定义分值' }).score, 2.5)
+  assert.equal(dashboardScoreLabel({}), '未设分')
+})
+
+test('总分仅来自已完成任务，缺分和异常提示，零分合法，无人任务不分配积分', () => {
+  const person = { key: 'p', name: '执行人', avatar: '' }
+  const task = (id, overrides = {}) => ({ id, status: 'done', score: 5, completedAt: null, assignees: [person], ...overrides })
+  const result = dashboardScoreboard([
+    task('five'), task('three', { score: 3 }), task('todo', { status: 'todo', deadline: instant - 1 }),
+    task('blank', { score: null }), task('invalid', { score: null, scoreInvalid: true }), task('zero', { score: 0 }),
+    task('unassigned', { assignees: [], publisher: '发布人' })
+  ])
+  assert.deepEqual(result.rows.map(row => [row.key, row.score, row.doneCount, row.rank]), [['p', 8, 5, 1]])
+  assert.equal(result.missingScoreCount, 1)
+  assert.equal(result.invalidScoreCount, 1)
+  assert.equal(result.unassignedCount, 1)
+  assert.deepEqual(dashboardScoreboard([]), { rows: [], missingScoreCount: 0, invalidScoreCount: 0, unassignedCount: 0 })
+})
+
+test('多人各得全分，人员和任务不重复累计，同名不同标识不合并，同分并列', () => {
+  const a = { key: 'a', name: '同名', avatar: '' }, b = { ...a, key: 'b' }
+  const row = { id: 'shared', status: 'done', score: 5, assignees: [a, a, b] }
+  const result = dashboardScoreboard([row, row, { id: 'pending', status: 'todo', score: 9, assignees: [{ key: 'c', name: '待办成员', avatar: '' }] }])
+  assert.deepEqual(result.rows.map(person => [person.key, person.score, person.doneCount, person.rank]), [['a', 5, 1, 1], ['b', 5, 1, 1], ['c', 0, 0, 3]])
+  const fractions = dashboardScoreboard([
+    { id: 'one', status: 'done', score: .1, assignees: [a] }, { id: 'two', status: 'done', score: .2, assignees: [a] },
+    { id: 'three', status: 'done', score: .3, assignees: [b] }
+  ])
+  assert.deepEqual(fractions.rows.map(person => [person.score, person.rank]), [[.3, 1], [.3, 1]])
+})
+
+test('完成、撤回、改分、补分、转交和删除在重算后生效，不依赖完成日期或累加次数', () => {
+  const person = { key: 'p', name: '原负责人', avatar: '' }
+  const task = { id: 'changing', status: 'todo', score: 5, assignees: [person], completedAt: null }
+  const score = () => dashboardScoreboard([task]).rows[0].score
+  assert.equal(score(), 0)
+  task.status = 'done'
+  assert.equal(score(), 5)
+  assert.equal(score(), 5)
+  task.status = 'todo'
+  assert.equal(score(), 0)
+  task.status = 'done'; task.score = 3
+  assert.equal(score(), 3)
+  task.score = null
+  assert.equal(score(), 0)
+  task.score = 4; task.assignees = [{ ...person, key: 'next', name: '新负责人' }]
+  assert.deepEqual(dashboardScoreboard([task]).rows.map(row => [row.key, row.score]), [['next', 4]])
+  assert.deepEqual(dashboardScoreboard([]).rows, [])
+})
+
+test('分值排序截止时间优先、同截止高分优先、零分先于缺分，完整人员榜跟随组别', () => {
+  const tasks = normalizeDashboardRecords(Array.from({ length: 16 }, (_, i) => ({ record_id: String(i), fields: {
+    任务名称: `任务${i}`, 完成情况: i % 2 ? '已完成' : '未完成', 分值: i === 0 ? undefined : i === 1 ? 0 : i,
+    执行人: [{ id: String(i), name: `成员${i}` }], 所属组别: i < 8 ? '电控组' : '机械组', 截止时间: i === 15 ? instant - 1000 : instant
+  } })))
+  const sorted = selectDashboardTasks(tasks, { status: 'all' })
+  assert.deepEqual(sorted.slice(0, 3).map(task => task.id), ['15', '14', '13'])
+  assert.deepEqual(sorted.slice(-2).map(task => task.id), ['1', '0'])
+  assert.equal(dashboardScoreboard(tasks).rows.length, 16)
+  const scoped = dashboardScoreboard(selectDashboardTasks(tasks, { status: 'all', group: '电控组' }))
+  assert.equal(scoped.rows.length, 8)
+  assert.equal(scoped.rows.reduce((total, row) => total + row.score, 0), 15)
+})
+
+test('现有字段映射无需新增配置即可通过只读服务返回分值与异常标记', async () => {
+  const handler = createDashboardService({ fetcher: async url => String(url).includes('/auth/')
+    ? reply({ code: 0, tenant_access_token: 'test-token', expire: 7200 })
+    : reply({ code: 0, data: { items: [{ record_id: 'real-shape', fields: {
+      任务详情: '单选分值', 负责人: [{ id: 'p', name: '成员' }], '负责人.部门': ['电控组'], 完成情况: '已完成', 分值: '5'
+    } }], has_more: false } }) })
+  const result = await handler(context({ env: { ...env, FEISHU_FIELD_MAP: JSON.stringify({ title: '任务详情', assignees: '负责人', group: '负责人.部门', status: '完成情况', deadline: '最晚截止日期' }) } }))
+  assert.equal(result.status, 200)
+  const body = await result.json()
+  assert.equal(body.tasks[0].score, 5)
+  assert.equal(body.tasks[0].scoreInvalid, false)
+  assert.equal(body.tasks[0].completedAt, null)
+  assert.equal(dashboardScoreboard(body.tasks).rows[0].score, 5)
 })

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { dashboardUrgency, dashboardTaskCountdown, dashboardNextDeadlines, dashboardPreferences, readDashboardPreferences, dashboardCompletionStats } from '../utils/dashboard-experience.mjs'
 
 const parse = value => Date.parse(value + '+08:00')
-const task = (id, overrides = {}) => ({ id, status: 'todo', deadline: null, completedAt: null, priority: 'medium', ...overrides })
+const task = (id, overrides = {}) => ({ id, status: 'todo', deadline: null, completedAt: null, score: null, ...overrides })
 
 test('临近截止按北京时间区分今日、跨日24小时及三天，边界不误报', () => {
   const now = parse('2026-10-22T23:00:00')
@@ -20,9 +20,9 @@ test('临近截止按北京时间区分今日、跨日24小时及三天，边界
 
 test('相同最近截止任务完整返回，排序稳定，排除已完成、已逾期及无日期', () => {
   const now = parse('2026-10-22T12:00:00'), deadline = now + 1000
-  const rows = [task('z', { deadline }), task('a', { deadline }), task('priority', { deadline, priority: 'high' }),
+  const rows = [task('z', { deadline }), task('a', { deadline }), task('score', { deadline, score: 5 }),
     task('done', { deadline, status: 'done' }), task('overdue', { deadline: now }), task('empty'), task('later', { deadline: deadline + 1 })]
-  assert.deepEqual(dashboardNextDeadlines(rows, now).map(row => row.id), ['priority', 'a', 'z'])
+  assert.deepEqual(dashboardNextDeadlines(rows, now).map(row => row.id), ['score', 'a', 'z'])
   assert.deepEqual(dashboardNextDeadlines(rows, deadline).map(row => row.id), ['later'])
   assert.deepEqual(dashboardNextDeadlines([], now), [])
 })

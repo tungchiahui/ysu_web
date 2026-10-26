@@ -1,9 +1,9 @@
-export { dashboardGridLayout, dashboardTaskPages, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks } from '../../utils/dashboard-data.mjs'
+export { dashboardGridLayout, dashboardTaskPages, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardScoreboard, dashboardScoreLabel } from '../../utils/dashboard-data.mjs'
 
 export type DashboardPerson = { key: string; name: string; avatar: string }
 export type DashboardTask = {
   id: string; title: string; group: string; groups?: string[]; assignees: DashboardPerson[]; publisher: string; publishers?: DashboardPerson[]
-  deadline: number | null; completedAt: number | null; priority: 'high' | 'medium' | 'low'
+  deadline: number | null; completedAt: number | null; score: number | null; scoreInvalid?: boolean
   status: 'todo' | 'done'; note: string
 }
 export type DashboardDevelopment = {

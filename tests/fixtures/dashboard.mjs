@@ -11,7 +11,7 @@ export function dashboardFixtures(now = Date.now()) {
       任务名称: title, 所属组别: groups[index % 5],
       执行人: [{ id: `person-${index % 5}`, name: names[index % 5] }, ...(index === 0 ? [{ id: 'person-1', name: names[1] }] : [])],
       发布人: [{ id: 'publisher', name: '示例负责人' }], 截止时间: index === 6 ? undefined : now + (index === 7 || index === 8 ? -1 : 1) * (index + 1) * 3600_000,
-      优先级: ['高', '中', '低'][index % 3], 完成状态: index >= 9 ? '已完成' : '未完成',
+      分值: index === 10 ? undefined : index === 11 ? '待核定' : [5, '4', '3'][index % 3], 完成状态: index >= 9 ? '已完成' : '未完成',
       完成时间: index >= 9 ? now - index * 60_000 : undefined,
       备注: index === 0 ? '本地演示：检查连接与装配情况，并整理测试记录。' : ''
     }

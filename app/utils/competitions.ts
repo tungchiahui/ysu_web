@@ -8,7 +8,7 @@ export function prepareCompetitions(events: CompetitionConfig[]) {
     if (!event.name?.trim() || names.has(event.name.trim())) fail('赛事名称不能为空或重复')
     names.add(event.name.trim())
     if (typeof event.enabled !== 'boolean') fail('enabled 必须为 true 或 false')
-    if (!['pending', 'historical', 'tentative', 'confirmed'].includes(event.dateStatus)) fail('日期状态应为 pending、historical、tentative 或 confirmed')
+    if (!['pending', 'historical', 'tentative', 'confirmed', 'target'].includes(event.dateStatus)) fail('日期状态应为 pending、historical、tentative、confirmed 或 target')
     if (event.dateStatus !== 'historical' && event.referenceYear !== undefined) fail('仅历史同期参考填写 referenceYear；更新正式赛程时请移除参考年份')
     if (event.dateStatus === 'pending') {
       if (event.startsAt !== null) fail('待定日期请设 startsAt=null；已有日期请同时更新 dateStatus')

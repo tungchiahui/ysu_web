@@ -2,7 +2,7 @@
 import { site } from '~/data/site'
 import { competitions } from '~/data/competitions'
 import { prepareCompetitions, competitionTimeLeft } from '~/utils/competitions'
-import { dashboardGridLayout, dashboardTaskPages, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardRanks, type DashboardData, type DashboardTask } from '~/utils/dashboard'
+import { dashboardGridLayout, dashboardTaskPages, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardScoreboard, type DashboardData, type DashboardTask } from '~/utils/dashboard'
 import { DASHBOARD_PREFERENCES_KEY, dashboardPreferences, readDashboardPreferences } from '../../../utils/dashboard-experience.mjs'
 import { dashboardCodeProfile } from '../../../utils/dashboard-members.mjs'
 
@@ -81,8 +81,7 @@ const taskPages = computed(() => dashboardTaskPages(visibleTasks.value.length, l
 const pages = computed(() => paginated.value ? Math.max(1, taskPages.value.length) : 1)
 const pageTasks = computed(() => paginated.value ? visibleTasks.value.slice(taskPages.value[pageIndex.value]?.start || 0, taskPages.value[pageIndex.value]?.end || layout.value.size) : visibleTasks.value)
 const rankedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value }))
-const todoRanks = computed(() => dashboardRanks(rankedTasks.value, 'todo'))
-const doneRanks = computed(() => dashboardRanks(rankedTasks.value, 'done'))
+const scoreboard = computed(() => dashboardScoreboard(rankedTasks.value))
 const activeTask = computed(() => tasks.value.find(task => task.id === selectedTaskId.value))
 const overlayOpen = computed(() => Boolean(activeTask.value || showCompletion.value))
 const completionScope = computed(() => `${selectedGroup.value === 'all' ? '全部组别' : selectedGroup.value}${search.value.trim() ? ' · 当前关键词筛选' : ''}`)
@@ -372,12 +371,12 @@ onBeforeUnmount(() => {
             <div class="dashboard-heading-event-info">
               <h2><img src="/images/competitions/robomaster.png" alt="RoboMaster" width="1021" height="663">{{ event.name }}</h2>
               <div class="dashboard-heading-event-meta">
-                <span v-if="event.dateStatus !== 'pending'" class="dashboard-heading-event-status" :class="event.dateStatus">{{ event.dateStatus === 'historical' ? `去年同期参考（${event.referenceYear}）` : event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span>
+                <span v-if="event.dateStatus !== 'pending'" class="dashboard-heading-event-status" :class="event.dateStatus">{{ event.dateStatus === 'target' ? '最终形态目标' : event.dateStatus === 'historical' ? `去年同期参考（${event.referenceYear}）` : event.dateStatus === 'tentative' ? '暂定' : '已确认' }}</span>
                 <time v-if="event.target !== null" :datetime="event.startsAt || undefined" :title="`${formatEventTime(event.target)} · 北京时间${event.dateStatus === 'historical' ? ' · 同期推算' : ''}`">{{ formatTime(event.target) }} · 北京时间</time>
               </div>
             </div>
             <div class="dashboard-heading-event-count">
-              <template v-if="event.state === 'counting'"><span class="visually-hidden">{{ event.dateStatus === 'historical' ? '距离参考日期' : '距离赛事' }}</span><strong>{{ event.days }}<small> 天</small></strong><span>{{ event.clock }}</span></template>
+              <template v-if="event.state === 'counting'"><span class="visually-hidden">{{ event.dateStatus === 'target' ? '距离最终形态目标' : event.dateStatus === 'historical' ? '距离参考日期' : '距离赛事' }}</span><strong>{{ event.days }}<small> 天</small></strong><span>{{ event.clock }}</span></template>
               <strong v-else>{{ event.state === 'pending' ? '日期待定' : event.state === 'waiting' ? '正在校时…' : '已到达节点' }}</strong>
             </div>
           </article>
@@ -445,12 +444,16 @@ onBeforeUnmount(() => {
           <div v-if="paginated && pageTasks.length" class="dashboard-pagination" aria-label="任务分页"><button type="button" aria-label="上一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + pages - 1) % pages">上一页</button><span>{{ pageIndex + 1 }} / {{ pages }} <small>每页 {{ pageSize }} 项</small></span><button type="button" aria-label="下一页任务" :disabled="pages === 1" @click="pageIndex = (pageIndex + 1) % pages">下一页</button><button v-if="fixedScreen" type="button" :disabled="pages === 1" :aria-pressed="autoRotate" @click="autoRotate = !autoRotate">{{ autoRotate ? '暂停轮播' : '继续轮播' }}</button></div>
         </section>
 
-        <aside class="dashboard-ranks" aria-label="个人任务统计">
-          <section v-for="rank in [{ label: '待办任务榜', rows: todoRanks }, { label: '已完成任务榜', rows: doneRanks }]" :key="rank.label" class="dashboard-panel">
-            <DashboardAutoScroll :label="rank.label" :suspended="overlayOpen" heading-class="dashboard-panel-heading">
-            <template #heading><h2>{{ rank.label }}</h2></template>
-            <ol v-if="rank.rows.length" class="dashboard-rank-list"><li v-for="(person, index) in rank.rows" :key="person.key" :style="{ '--rank-width': `${person.count / (rank.rows[0]?.count || 1) * 100}%` }"><span class="dashboard-rank-number">{{ String(index + 1).padStart(2, '0') }}</span><DashboardMember class="dashboard-rank-name" :person="person" :profile="memberProfile(person.name)" /><strong>{{ person.count }}<small> 项</small></strong></li></ol>
-            <p v-else class="dashboard-empty">暂无记录</p>
+        <aside class="dashboard-ranks" aria-label="个人积分统计">
+          <section class="dashboard-panel dashboard-scoreboard">
+            <DashboardAutoScroll label="个人总分榜" :suspended="overlayOpen" heading-class="dashboard-panel-heading">
+            <template #heading><h2>个人总分榜</h2></template>
+            <template #description>
+              <p class="dashboard-score-scope">{{ selectedGroup === 'all' ? '全部组别' : selectedGroup }} · 仅已完成任务计分</p>
+              <p v-if="scoreboard.missingScoreCount || scoreboard.invalidScoreCount || scoreboard.unassignedCount" class="dashboard-score-warning" role="status">已完成任务中，<template v-if="scoreboard.missingScoreCount">{{ scoreboard.missingScoreCount }}项未设分；</template><template v-if="scoreboard.invalidScoreCount">{{ scoreboard.invalidScoreCount }}项分值异常；</template><template v-if="scoreboard.unassignedCount">{{ scoreboard.unassignedCount }}项未分配负责人；</template>以上情况不产生对应积分。</p>
+            </template>
+            <ol v-if="scoreboard.rows.length" class="dashboard-rank-list"><li v-for="person in scoreboard.rows" :key="person.key" :style="{ '--rank-width': `${person.score / (scoreboard.rows[0]?.score || 1) * 100}%` }"><span class="dashboard-rank-number">{{ String(person.rank).padStart(2, '0') }}</span><DashboardMember class="dashboard-rank-name" :person="person" :profile="memberProfile(person.name)" /><div class="dashboard-rank-total"><strong>{{ person.score }}<small> 分</small></strong><small>已完成 {{ person.doneCount }} 项</small></div></li></ol>
+            <p v-else class="dashboard-empty">暂无任务人员</p>
             </DashboardAutoScroll>
           </section>
         </aside>

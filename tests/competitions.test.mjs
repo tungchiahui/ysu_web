@@ -5,10 +5,16 @@ import { prepareCompetitions, competitionTimeLeft } from '../app/utils/competiti
 
 const event = { name: '测试赛事', startsAt: '2027-01-01T09:00:00+08:00', dateStatus: 'confirmed', enabled: true }
 
-test('实际赛事按用户选择参考2026比赛首场，不标记为正式赛程', () => {
-  assert.deepEqual(competitions.map(item => item.name), ['2027 RMUL 山东站', '2027 RMUC 东部赛区（济南）'])
-  assert(prepareCompetitions(competitions).every(item => item.target !== null && item.dateStatus === 'historical' && item.referenceYear === 2026))
-  assert.deepEqual(competitions.map(item => item.startsAt), ['2027-03-20T15:00:00+08:00', '2027-05-21T08:30:00+08:00'])
+test('最终形态目标采用用户指定的2027年北京时间零点', () => {
+  assert.deepEqual(competitions.map(item => item.name), ['2027RMUL最终形态', '2027RMUC最终形态'])
+  const prepared = prepareCompetitions(competitions)
+  assert(prepared.every(item => item.target !== null && item.dateStatus === 'target' && item.referenceYear === undefined))
+  assert.deepEqual(competitions.map(item => item.startsAt), ['2027-01-04T00:00:00+08:00', '2027-03-08T00:00:00+08:00'])
+  assert.deepEqual(prepared.map(item => item.target), [Date.parse('2027-01-03T16:00:00Z'), Date.parse('2027-03-07T16:00:00Z')])
+  for (const item of prepared) {
+    assert.deepEqual(competitionTimeLeft(item.target, item.target - 1000), { state: 'counting', days: 0, clock: '00:00:01' })
+    assert.equal(competitionTimeLeft(item.target, item.target).state, 'reached')
+  }
   assert.equal(competitionTimeLeft(null, Date.now()).state, 'pending')
 })
 
