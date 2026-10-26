@@ -243,19 +243,16 @@ test('成员入口直达已有档案，缺少档案时不生成链接', () => {
 })
 
 
-test('按整行自然高度分页，长行只影响本行且不丢失尾页', () => {
-  assert.deepEqual(dashboardTaskPages([200, 190, 170, 180, 220, 180], 2, 400, 10), [
-    { start: 0, end: 4, height: 390, rows: 2 }, { start: 4, end: 6, height: 220, rows: 1 }
-  ])
-  assert.deepEqual(dashboardTaskPages([150, 150, 150, 150, 150], 2, 470, 10), [
-    { start: 0, end: 5, height: 470, rows: 3 }
-  ])
-  assert.deepEqual(dashboardTaskPages([], 2, 400), [])
-  assert.deepEqual(dashboardTaskPages([300, 200], 1, 250), [
-    { start: 0, end: 1, height: 300, rows: 1 }, { start: 1, end: 2, height: 200, rows: 1 }
-  ])
+test('同一窗口下每页容量固定，完整页均为相同行数，尾页不丢项', () => {
+  const pages = dashboardTaskPages(30, 3, 2)
+  assert.equal(pages.length, 5)
+  assert(pages.every(page => page.end - page.start === 6))
+  assert.deepEqual(pages.flatMap(page => Array.from({ length: page.end - page.start }, (_, i) => page.start + i)), Array.from({ length: 30 }, (_, i) => i))
+  assert.deepEqual(dashboardTaskPages(29, 3, 2).at(-1), { start: 24, end: 29 })
+  assert.deepEqual(dashboardTaskPages(0, 3, 2), [])
+  assert.deepEqual(dashboardTaskPages(1, 3, 2), [{ start: 0, end: 1 }])
+  assert.equal(dashboardTaskPages(30, 3, 3).length, 4)
 })
-
 
 test('任务榜返回全部人员供滚动展示，不只保留前八名', () => {
   const tasks = Array.from({ length: 15 }, (_, i) => ({ status: 'todo', assignees: [{ key: String(i), name: `成员${i}` }] }))

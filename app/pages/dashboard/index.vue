@@ -34,9 +34,7 @@ const taskList = ref<HTMLElement | null>(null)
 const dashboardPage = ref<HTMLElement | null>(null)
 const layout = ref({ columns: 1, rows: 2, size: 2 })
 const fixedGridHeight = ref<number | null>(null)
-const taskMeasure = ref<HTMLElement | null>(null)
-const measurementTime = ref(0)
-const taskPages = ref([{ start: 0, end: 2, height: 0, rows: 1 }])
+
 const { data: members } = await useAsyncData('dashboard:members', () => queryCollection('members').select('name', 'image', 'links').all())
 const codeProfile = (person: { name: string; href?: string; login?: string; memberName?: string }) => dashboardCodeProfile(person, members.value || [], site.logo)
 const memberNames = computed(() => (members.value || []).map(member => member.name))
@@ -78,10 +76,8 @@ const statuses = computed(() => [
 const visibleTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, {
   status: selectedStatus.value, group: selectedGroup.value, search: search.value, now: currentTime.value
 }))
-const pageSize = computed(() => {
-  const page = taskPages.value[pageIndex.value]
-  return page ? page.end - page.start : layout.value.size
-})
+const pageSize = computed(() => layout.value.size)
+const taskPages = computed(() => dashboardTaskPages(visibleTasks.value.length, layout.value.columns, layout.value.rows))
 const pages = computed(() => paginated.value ? Math.max(1, taskPages.value.length) : 1)
 const pageTasks = computed(() => paginated.value ? visibleTasks.value.slice(taskPages.value[pageIndex.value]?.start || 0, taskPages.value[pageIndex.value]?.end || layout.value.size) : visibleTasks.value)
 const rankedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value }))
@@ -100,7 +96,7 @@ const clock = computed(() => currentTime.value ? new Intl.DateTimeFormat('zh-CN'
   timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
 }).format(currentTime.value) : '')
 
-watch([selectedStatus, selectedGroup, search, paginated], () => { pageIndex.value = 0; lastRotation = currentTime.value })
+watch([selectedStatus, selectedGroup, search, paginated, pageSize], () => { pageIndex.value = 0; lastRotation = currentTime.value })
 watch(pages, value => { pageIndex.value = Math.min(pageIndex.value, value - 1) })
 watch(activeTask, task => { if (!task) selectedTaskId.value = null })
 watch(data, value => { if (!value) { selectedTaskId.value = null; showCompletion.value = false } })
@@ -257,7 +253,7 @@ const measureScreen = () => {
     }, 0)
   // 短屏或顶部内容较多时解除固定高度，避免任务面板被压成零高度。
   const developmentPanel = dashboardPage.value?.querySelector<HTMLElement>('.dashboard-development')
-  const developmentReserve = developmentPanel ? Math.min(260, Math.max(160, window.innerHeight * .18)) + 16 : 0
+  let developmentReserve = developmentPanel ? Math.min(260, Math.max(160, window.innerHeight * .18)) + 16 : 0
   viewportFitsScreen.value = candidate && window.innerHeight - 32 - occupied - developmentReserve >= 360
   dashboardPage.value?.classList.toggle('is-fixed-screen', fixedScreen.value)
   desktopPagination.value = window.matchMedia('(min-width: 1000px)').matches
@@ -278,12 +274,7 @@ const measureScreen = () => {
   const fontSize = Number.parseFloat(getComputedStyle(taskList.value).fontSize) || 16
   let gap = fixedScreen.value ? 10 : 14
   let columns = dashboardGridLayout(box.width, 0, gap, fontSize).columns
-  if (taskMeasure.value) {
-    taskMeasure.value.style.width = `${box.width}px`
-    taskMeasure.value.style.setProperty('--dashboard-columns', String(columns))
-  }
-  let cardHeights = [...(taskMeasure.value?.children || [])].map(element => element.getBoundingClientRect().height)
-  let cardHeight = Math.max(...cardHeights, 180 * Math.max(1, fontSize / 16))
+  const cardHeight = Number.parseFloat(getComputedStyle(taskList.value).gridAutoRows) || fontSize * 11
   const grid = dashboardPage.value?.querySelector<HTMLElement>('.dashboard-grid')
   const panel = taskList.value.closest<HTMLElement>('.dashboard-tasks')
   const pager = panel?.querySelector<HTMLElement>('.dashboard-pagination')
@@ -293,37 +284,34 @@ const measureScreen = () => {
   const chrome = panel ? box.top - panel.getBoundingClientRect().top + (pager?.getBoundingClientRect().height || 0) + panelBottom : 0
   const available = dashboardPage.value && grid ? dashboardPage.value.getBoundingClientRect().bottom - grid.getBoundingClientRect().top : 0
   let height = fixedScreen.value ? Math.max(0, available - developmentReserve - chrome) : Math.max(300, Math.min(window.innerHeight * .62, 900))
-  const firstRowsHeight = cardHeights.length > columns
-    ? Math.max(...cardHeights.slice(0, columns)) + gap + Math.max(...cardHeights.slice(columns, columns * 2)) : cardHeight
+  const minimumHeight = visibleTasks.value.length > columns ? cardHeight * 2 + gap : cardHeight
+  // 优先给足两行的高度，研发区可降至其160px可读下限；与当前页文字长短无关。
+  if (fixedScreen.value && developmentPanel && height < minimumHeight) {
+    developmentReserve = Math.min(developmentReserve, Math.max(176, available - chrome - minimumHeight))
+    height = Math.max(0, available - developmentReserve - chrome)
+  }
   // 浏览器工具栏或缩放挤占高度时允许页面滚动，不把大量任务压成一行。
-  if (fixedScreen.value && height < firstRowsHeight) {
+  if (fixedScreen.value && height < minimumHeight) {
     viewportFitsScreen.value = false
     dashboardPage.value?.classList.remove('is-fixed-screen')
     fixedGridHeight.value = null
     box = taskList.value.getBoundingClientRect()
     gap = 14
     columns = dashboardGridLayout(box.width, 0, gap, fontSize).columns
-    if (taskMeasure.value) {
-      taskMeasure.value.style.width = `${box.width}px`
-      taskMeasure.value.style.setProperty('--dashboard-columns', String(columns))
-    }
-    cardHeights = [...(taskMeasure.value?.children || [])].map(element => element.getBoundingClientRect().height)
-    cardHeight = Math.max(...cardHeights, 180 * Math.max(1, fontSize / 16))
     height = Math.max(300, Math.min(window.innerHeight * .62, 900))
   }
   layout.value = dashboardGridLayout(box.width, height, gap, fontSize, cardHeight)
-  taskPages.value = dashboardTaskPages(cardHeights.length ? cardHeights : visibleTasks.value.map(() => cardHeight), columns, height, gap)
-  const currentPage = taskPages.value[Math.min(pageIndex.value, taskPages.value.length - 1)]
-  fixedGridHeight.value = fixedScreen.value && developmentPanel && currentPage ? Math.ceil(chrome + currentPage.height) : null
+  const usedRows = Math.min(layout.value.rows, Math.max(1, Math.ceil(visibleTasks.value.length / layout.value.columns)))
+  // 尾页也保留相同面板高度，翻页不重新分配空间或改变每页容量。
+  fixedGridHeight.value = fixedScreen.value && developmentPanel ? Math.ceil(chrome + usedRows * cardHeight + (usedRows - 1) * gap) : null
 }
 watch(taskList, (element, previous) => {
   if (previous) layoutObserver?.unobserve(previous)
   if (element) layoutObserver?.observe(element)
   void nextTick(resizeScreen)
 }, { flush: 'post' })
-watch(taskMeasure, () => { void nextTick(resizeScreen) })
 watch([screen, showSyncDetails], () => { void nextTick(resizeScreen) })
-watch([data, selectedGroup, search, selectedStatus, pageIndex, () => pageTasks.value.length], () => { measurementTime.value = currentTime.value; void nextTick(resizeScreen) }, { flush: 'post' })
+watch([data, selectedGroup, search, selectedStatus, () => visibleTasks.value.length], () => { void nextTick(resizeScreen) }, { flush: 'post' })
 onMounted(() => {
   currentTime.value = Date.now()
   lastRotation = currentTime.value
@@ -443,9 +431,6 @@ onBeforeUnmount(() => {
           <div class="dashboard-overdue"><span>已逾期</span><strong>{{ counts.overdue }}</strong></div>
           <div><span>已完成</span><strong>{{ counts.done }}</strong><button type="button" class="dashboard-text-button dashboard-trend-trigger" aria-label="查看完成趋势" @click="selectedTaskId = null; showCompletion = true">完成趋势 →</button></div>
         </section>
-      </div>
-      <div v-if="paginated && visibleTasks.length" ref="taskMeasure" class="dashboard-task-measure dashboard-task-list" aria-hidden="true" inert>
-        <article v-for="task in visibleTasks" :key="task.id" class="dashboard-task" :class="dashboardTaskState(task, measurementTime)"><DashboardTaskContent :task="task" :current-time="measurementTime" :paginated="true" :profile-for="memberProfile" /></article>
       </div>
       <div class="dashboard-grid">
         <section class="dashboard-panel dashboard-tasks" aria-label="任务列表">

@@ -800,13 +800,18 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
   .is-fixed-screen .dashboard-code-ranks, .is-fixed-screen .dashboard-events { flex: 1 1 0; min-height: 0; max-height: none; overflow-y: auto; }
 }
 
-/* 按内容测量完整任务行；测量树不参与页面布局、交互或每秒时钟更新。 */
-.is-paginated .dashboard-task-list { grid-template-rows: none; grid-auto-rows: max-content; }
-.is-paginated .dashboard-task { height: auto; }
-.is-paginated .dashboard-task-meta { margin-top: auto; padding-top: 10px; }
+/* 分页容量固定，同一视口的长短任务均占用相同卡片高度。 */
+.is-paginated .dashboard-task-list { grid-template-rows: none; grid-auto-rows: calc(var(--dashboard-text) * 11); }
+.is-paginated .dashboard-task { height: 100%; padding: 10px; }
+.is-paginated .dashboard-task h3 { margin: 6px 0; line-height: 1.3; }
+.is-paginated .dashboard-note { display: none; }
+.is-paginated .dashboard-task-meta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 6px; margin-top: auto; padding-top: 6px; }
+.is-paginated .dashboard-publishers { flex-wrap: nowrap; justify-content: flex-end; min-width: 0; }
+.is-paginated .dashboard-publisher-label { flex: 0 0 auto; }
+.is-paginated .dashboard-publishers .dashboard-person { flex: 0 1 auto; min-width: 0; }
+.is-paginated .dashboard-publishers .dashboard-person > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .is-paginated .dashboard-task-top { flex-wrap: nowrap; }
 .is-paginated .dashboard-task-flags { flex-wrap: nowrap; flex-shrink: 0; }
-.dashboard-task-measure { position: fixed; top: 0; left: -100000px; visibility: hidden; pointer-events: none; contain: layout style; }
 .dashboard-page .dashboard-team-name { white-space: nowrap; }
 @media (min-width: 1200px) {
   .is-screen.dashboard-page .dashboard-heading { grid-template-columns: clamp(280px, 14.5vw, 380px) minmax(0, 1fr) clamp(280px, 14.5vw, 380px); }

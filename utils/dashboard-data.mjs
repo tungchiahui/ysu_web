@@ -46,24 +46,13 @@ export function dashboardGridLayout(width, height, gap = 10, fontSize = 16, card
   return { columns, rows, size: columns * rows }
 }
 
-// 同一行取最高卡片，按完整行分页；短行不会被其他行的长内容拉高。
-export function dashboardTaskPages(heights, columns, availableHeight, gap = 10) {
-  const pages = []
-  const count = Math.max(1, Math.floor(columns))
-  let page = { start: 0, end: 0, height: 0, rows: 0 }
-  for (let start = 0; start < heights.length; start += count) {
-    const end = Math.min(start + count, heights.length)
-    const height = Math.max(1, ...heights.slice(start, end))
-    if (page.rows && page.height + gap + height > availableHeight) {
-      pages.push(page)
-      page = { start, end: start, height: 0, rows: 0 }
-    }
-    page.height += (page.rows ? gap : 0) + height
-    page.end = end
-    page.rows++
-  }
-  if (page.rows) pages.push(page)
-  return pages
+// 容量只由窗口决定，不按各页任务的文字长短重新打包；尾页保留不足项。
+export function dashboardTaskPages(taskCount, columns, rows) {
+  const size = Math.max(1, Math.floor(columns)) * Math.max(1, Math.floor(rows))
+  const count = Math.max(0, Math.floor(taskCount))
+  return Array.from({ length: Math.ceil(count / size) }, (_, index) => ({
+    start: index * size, end: Math.min((index + 1) * size, count)
+  }))
 }
 
 export function dashboardMemberPath(name, profileNames = []) {
