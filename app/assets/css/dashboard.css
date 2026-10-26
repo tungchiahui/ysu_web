@@ -321,7 +321,7 @@ body.dashboard-screen .site-shell { display: flow-root; }
 .dashboard-page.is-screen { width: calc(100% - 48px); max-width: none; margin: 24px auto; }
 .dashboard-page.is-screen .dashboard-heading { margin-bottom: 20px; }
 @media (min-width: 1200px) and (min-height: 700px) {
-  .dashboard-page.is-fixed-screen { display: flex; flex-direction: column; height: calc(100svh - 32px); margin: 16px auto; }
+  .dashboard-page.is-fixed-screen { display: flex; flex-direction: column; height: calc(100dvh - 32px); margin: 16px auto; overflow: hidden; }
   .is-fixed-screen .dashboard-heading { flex: 0 0 auto; margin-bottom: 12px; }
   .is-fixed-screen .dashboard-heading h1 { font-size: clamp(2rem, 2vw, 3.5rem); }
   .is-fixed-screen .dashboard-heading { padding-bottom: 10px; }
@@ -783,14 +783,6 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
   .is-screen .dashboard-heading-event:nth-child(2) { grid-template-columns: max-content minmax(148px, .7fr) minmax(0, 1.6fr); }
   .is-screen .dashboard-heading-event:first-child .dashboard-heading-event-count { flex-direction: row-reverse; }
 }
-/* 较窄桌面让两张卡使用标题下一整行，保证三列内容不互相挤压。 */
-@media (min-width: 1200px) and (max-width: 1799px) {
-  .is-screen .dashboard-heading-center { display: contents; }
-  .is-screen .dashboard-heading-center .dashboard-title-block { grid-column: 2; grid-row: 1; }
-  .is-screen .dashboard-header-controls { grid-column: 3; grid-row: 1; }
-  .is-screen .dashboard-heading-competitions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 1 / -1; gap: 16px; }
-  .is-screen .dashboard-heading-event:first-child, .is-screen .dashboard-heading-event:nth-child(2) { grid-column: auto; grid-row: auto; }
-}
 
 /* 完整任务行优先；不足一行的余量交给研发动态，不留在分页上方。 */
 @media (min-width: 1200px) and (min-height: 700px) {
@@ -848,8 +840,13 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 }
 
 .dashboard-scroll-viewport { overflow-x: hidden; }
-/* 1080p 的横框采用两列：名称和参考信息合组，保留更大的标题宽度。 */
-@media (min-width: 1800px) and (max-width: 2199px) {
+/* 有缩放的2K屏同样保持标题两侧，不把倒计时移到下一行。 */
+@media (min-width: 1200px) and (max-width: 2199px) {
+  .is-screen .dashboard-heading-center { display: grid; grid-column: 2; grid-row: 1; }
+  .is-screen .dashboard-heading-competitions { display: contents; }
+  .is-screen .dashboard-heading-event:first-child { grid-column: 1; grid-row: 1; }
+  .is-screen .dashboard-heading-event:nth-child(2) { grid-column: 3; grid-row: 1; }
+  .is-screen.dashboard-page .dashboard-header-controls { grid-column: 3; grid-row: 1; justify-self: end; }
   .is-screen .dashboard-heading-event { grid-template-columns: minmax(0, 1fr) max-content; }
   .is-screen .dashboard-heading-event:nth-child(2) { grid-template-columns: max-content minmax(0, 1fr); }
   .is-screen .dashboard-heading-event-info { display: block; grid-column: 1; grid-row: 1; }
@@ -858,4 +855,33 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
   .is-screen .dashboard-heading-event-count { grid-column: 2; }
   .is-screen .dashboard-heading-event:nth-child(2) .dashboard-heading-event-info { grid-column: 2; }
   .is-screen .dashboard-heading-event:nth-child(2) .dashboard-heading-event-meta { text-align: right; }
+}
+
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .is-screen .dashboard-heading-center { gap: 12px; }
+  .is-screen .dashboard-heading-event,
+  .is-screen .dashboard-heading-event:nth-child(2) { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; gap: 4px; padding: 5px 8px; }
+  .is-screen .dashboard-heading-event .dashboard-heading-event-info,
+  .is-screen .dashboard-heading-event:nth-child(2) .dashboard-heading-event-info { grid-column: 1; grid-row: 1; }
+  .is-screen .dashboard-heading-event .dashboard-heading-event-count,
+  .is-screen .dashboard-heading-event:nth-child(2) .dashboard-heading-event-count { grid-column: 1; grid-row: 2; }
+  .is-screen .dashboard-heading-event h2 { font-size: 16px; gap: 4px; }
+  .is-screen .dashboard-heading-event h2 img { width: 22px; height: 16px; }
+  .is-screen .dashboard-heading-event-count strong { font-size: 30px; }
+  .is-screen .dashboard-heading-event-count > span:not(.visually-hidden) { font-size: 14px; }
+}
+
+/* 短屏保留可读字号和两行任务，缩小头部与分页控件的额外占高。 */
+@media (min-width: 1200px) and (min-height: 700px) and (max-height: 1000px) {
+  .dashboard-page.is-fixed-screen .dashboard-heading { margin-bottom: 8px; padding-bottom: 8px; }
+  .is-fixed-screen .dashboard-header-controls .dashboard-clock { line-height: 1.2; margin: 0 0 4px; }
+  .is-fixed-screen .dashboard-actions { display: grid; grid-template-columns: repeat(3, max-content); justify-content: end; align-items: center; gap: 4px; }
+  .is-fixed-screen .dashboard-actions button { padding: 4px 8px; font-size: 12px; line-height: 1.2; }
+  .is-fixed-screen .dashboard-connection { font-size: 12px; line-height: 1.2; }
+  .is-fixed-screen .dashboard-panel { padding: 12px; }
+  .is-fixed-screen .dashboard-tasks > .dashboard-panel-heading { margin-bottom: 4px; padding-bottom: 2px; }
+  .is-fixed-screen .dashboard-tabs { gap: 6px; margin-bottom: 6px; }
+  .is-fixed-screen .dashboard-tabs button { padding: 4px 8px; line-height: 1.2; }
+  .is-fixed-screen .dashboard-pagination { gap: 8px; padding-top: 6px; }
+  .is-fixed-screen .dashboard-pagination button { padding: 4px 9px; line-height: 1.2; }
 }

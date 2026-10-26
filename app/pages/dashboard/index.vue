@@ -244,16 +244,10 @@ const measureScreen = () => {
   const candidate = screen.value && window.matchMedia('(min-width: 1200px) and (min-height: 700px)').matches
   // 先按固定大屏样式实测，避免普通模式较大的间距误判为没有空间。
   dashboardPage.value?.classList.toggle('is-fixed-screen', candidate)
-  const occupied = [...(dashboardPage.value?.children || [])].filter(element =>
-    element.matches('.dashboard-heading, .dashboard-notice, .dashboard-toolbar, .dashboard-stats, .dashboard-competitions'))
-    .reduce((total, element) => {
-      const style = getComputedStyle(element)
-      return total + element.getBoundingClientRect().height + (Number.parseFloat(style.marginTop) || 0) + (Number.parseFloat(style.marginBottom) || 0)
-    }, 0)
-  // 短屏或顶部内容较多时解除固定高度，避免任务面板被压成零高度。
   const developmentPanel = dashboardPage.value?.querySelector<HTMLElement>('.dashboard-development')
   let developmentReserve = developmentPanel ? Math.min(260, Math.max(160, window.innerHeight * .18)) + 16 : 0
-  viewportFitsScreen.value = candidate && window.innerHeight - 32 - occupied - developmentReserve >= 360
+  // 桌面大屏保持在视口内，空间不足时减少固定行数，不能退回整页滚动。
+  viewportFitsScreen.value = candidate
   dashboardPage.value?.classList.toggle('is-fixed-screen', fixedScreen.value)
   desktopPagination.value = window.matchMedia('(min-width: 1000px)').matches
   if (!taskList.value) {
@@ -268,11 +262,11 @@ const measureScreen = () => {
 
     return
   }
-  let box = taskList.value.getBoundingClientRect()
+  const box = taskList.value.getBoundingClientRect()
   // 桌面普通模式用独立的视口预算分页，不使用完整任务列表的高度，避免反馈增长；窄屏连续滚动。
   const fontSize = Number.parseFloat(getComputedStyle(taskList.value).fontSize) || 16
-  let gap = fixedScreen.value ? 10 : 14
-  let columns = dashboardGridLayout(box.width, 0, gap, fontSize).columns
+  const gap = fixedScreen.value ? 10 : 14
+  const columns = dashboardGridLayout(box.width, 0, gap, fontSize).columns
   const cardHeight = Number.parseFloat(getComputedStyle(taskList.value).gridAutoRows) || fontSize * 11
   const grid = dashboardPage.value?.querySelector<HTMLElement>('.dashboard-grid')
   const panel = taskList.value.closest<HTMLElement>('.dashboard-tasks')
@@ -288,16 +282,6 @@ const measureScreen = () => {
   if (fixedScreen.value && developmentPanel && height < minimumHeight) {
     developmentReserve = Math.min(developmentReserve, Math.max(176, available - chrome - minimumHeight))
     height = Math.max(0, available - developmentReserve - chrome)
-  }
-  // 浏览器工具栏或缩放挤占高度时允许页面滚动，不把大量任务压成一行。
-  if (fixedScreen.value && height < minimumHeight) {
-    viewportFitsScreen.value = false
-    dashboardPage.value?.classList.remove('is-fixed-screen')
-    fixedGridHeight.value = null
-    box = taskList.value.getBoundingClientRect()
-    gap = 14
-    columns = dashboardGridLayout(box.width, 0, gap, fontSize).columns
-    height = Math.max(300, Math.min(window.innerHeight * .62, 900))
   }
   layout.value = dashboardGridLayout(box.width, height, gap, fontSize, cardHeight)
   const usedRows = Math.min(layout.value.rows, Math.max(1, Math.ceil(visibleTasks.value.length / layout.value.columns)))
