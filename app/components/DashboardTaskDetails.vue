@@ -20,6 +20,7 @@ const format = (value: number | null) => value ? new Intl.DateTimeFormat('zh-CN'
     <h2 id="dashboard-task-detail-title">{{ task.title }}</h2>
     <div class="dashboard-detail-tags">
       <span class="dashboard-detail-state">{{ state === 'done' ? '已完成' : state === 'overdue' ? '已逾期' : '未完成' }}</span>
+      <span v-if="task.statusMissing" class="dashboard-warning">状态未填写，暂按未完成</span>
       <span class="dashboard-score" :class="{ 'is-invalid': task.scoreInvalid }">{{ dashboardScoreLabel(task) }}</span>
       <span v-if="urgency && state !== 'overdue'" class="dashboard-urgency" :class="urgency.level">{{ urgency.label }}</span>
     </div>

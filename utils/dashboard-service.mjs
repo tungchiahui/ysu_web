@@ -104,9 +104,11 @@ function createScopedService({ fetcher, now }) {
       if (result.code !== 0 || !Array.isArray(result.data?.items)) throw new Error('FEISHU_READ_FAILED')
       records.push(...result.data.items)
       if (!result.data.has_more) {
-        const tasks = normalizeDashboardRecords(records, JSON.parse(env.FEISHU_FIELD_MAP || '{}'))
+        const statusIssues = []
+        const tasks = normalizeDashboardRecords(records, JSON.parse(env.FEISHU_FIELD_MAP || '{}'), { statusIssues })
+        if (statusIssues.length && !tasks.length) throw Object.assign(new Error('INVALID_TASK_STATUS'), { statusIssues })
         if (records.some(record => Object.keys(record.fields || {}).length) && !tasks.length) throw new Error('INVALID_FIELD_MAP')
-        return tasks
+        return { tasks, statusIssues }
       }
       pageToken = result.data.page_token
       if (!pageToken || seenPages.has(pageToken)) throw new Error('INVALID_PAGINATION')
@@ -118,7 +120,7 @@ function createScopedService({ fetcher, now }) {
   async function tasks(env) {
     if (taskCache && now() - taskCache.at < TASK_TTL) return { ...taskCache, stale: false }
     if (!taskPending) taskPending = readTasks(env).then(value => {
-      taskCache = { value, at: now() }
+      taskCache = { value: value.tasks, statusIssues: value.statusIssues, at: now() }
       return { ...taskCache, stale: false }
     }).catch(error => {
       if (taskCache && now() - taskCache.at <= STALE_TTL) return { ...taskCache, stale: true }
@@ -146,11 +148,12 @@ function createScopedService({ fetcher, now }) {
     try {
       const [data, activity] = await Promise.all([tasks(env), development(env)])
       // github 仅兼容缓存中的旧页面；内容由 GitCode 提供，不再请求 GitHub API。
-      return response({ tasks: data.value, updatedAt: data.at, stale: data.stale, refreshSeconds: 30, development: activity, github: activity })
+      return response({ tasks: data.value, statusIssues: data.statusIssues, updatedAt: data.at, stale: data.stale, refreshSeconds: 30, development: activity, github: activity })
     } catch (error) {
       const reasons = ['INVALID_FIELD_MAP', 'INVALID_TASK_STATUS', 'INVALID_TASK_DATE', 'INVALID_TASK_ID', 'TASK_LIMIT_EXCEEDED', 'INVALID_PAGINATION', 'FEISHU_AUTH_FAILED', 'FEISHU_READ_FAILED']
       const reason = reasons.includes(error.message) ? error.message : 'UPSTREAM_UNAVAILABLE'
-      return response({ code: 'DATA_UNAVAILABLE', reason, message: '暂时无法更新任务，请稍后重试。' }, 502)
+      return response({ code: 'DATA_UNAVAILABLE', reason, message: '暂时无法更新任务，请稍后重试。',
+        ...(reason === 'INVALID_TASK_STATUS' && Array.isArray(error.statusIssues) ? { statusIssues: error.statusIssues } : {}) }, 502)
     }
   }
 }

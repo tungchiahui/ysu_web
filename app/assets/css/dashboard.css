@@ -491,6 +491,7 @@ a.dashboard-person:focus-visible { outline: 2px solid var(--cyan); outline-offse
 .dashboard-page .dashboard-task-title:hover { color: var(--cyan); text-decoration: underline; text-underline-offset: 4px; }
 .dashboard-task { cursor: pointer; }
 .dashboard-task-flags { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 4px 8px; flex: 0 1 auto; max-width: 70%; }
+.dashboard-status-missing { font-size: calc(var(--dashboard-text) * .65); white-space: nowrap; }
 .dashboard-page .dashboard-urgency { flex: 0 0 auto; display: inline-block; padding: 1px 6px; border: 1px solid rgba(255, 179, 92, .4); color: var(--gold); font-size: calc(var(--dashboard-text) * .75); line-height: 1.5; letter-spacing: 0; font-weight: 600; white-space: nowrap; }
 .dashboard-page .dashboard-urgency.upcoming { color: #a8d9ff; border-color: rgba(168, 217, 255, .4); }
 .dashboard-page .dashboard-urgency.overdue { color: #ffb3a1; border-color: rgba(255, 179, 161, .4); }

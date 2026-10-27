@@ -51,6 +51,87 @@ test('字段映射、错误状态及日期处理，不将错误表格伪装成�
   assert.throws(() => normalizeDashboardRecords([{ record_id: 'id', fields: { 任务名称: '任务', 完成状态: '未完成', 截止时间: 'bad date' } }]), /INVALID_TASK_DATE/)
 })
 
+test('空完成状态按未完成展示并标记，已有完成时间和分值也不计分', () => {
+  const blanks = [undefined, null, '', '  \n ', []]
+  const tasks = normalizeDashboardRecords(blanks.map((value, i) => ({ record_id: `blank-${i}`, fields: {
+    任务名称: `空状态任务${i}`, 完成情况: value, 完成时间: instant, 分值: '5', 最晚截止日期: instant - 1,
+    执行人: [{ id: 'person', name: '示例成员' }]
+  } })))
+  assert.equal(tasks.length, blanks.length)
+  assert(tasks.every(task => task.status === 'todo' && task.statusMissing === true))
+  assert(tasks.every(task => dashboardTaskState(task, instant) === 'overdue'))
+  assert.deepEqual(dashboardScoreboard(tasks).rows.map(row => [row.score, row.doneCount]), [[0, 0]])
+  const withEmptyFields = normalizeDashboardRecords([{ record_id: 'empty', fields: { 任务名称: '仅标题任务' } }])[0]
+  assert.equal(withEmptyFields.deadline, null)
+  assert.equal(withEmptyFields.score, null)
+  assert.deepEqual(withEmptyFields.assignees, [])
+})
+
+test('非空未知状态可单条隔离，布尔或数字等异常格式不能误判为空状态', () => {
+  const statusIssues = []
+  const invalid = ['进行中', false, 0, {}].map((value, i) => ({ record_id: `invalid-${i}`, fields: {
+    任务名称: '状态待确认', 完成情况: value, 内部资料: 'private-never-return'
+  } }))
+  for (const record of invalid) assert.throws(() => normalizeDashboardRecords([record]), /INVALID_TASK_STATUS/)
+  const tasks = normalizeDashboardRecords([...records, ...invalid], {}, { statusIssues })
+  assert.equal(tasks.length, records.length)
+  assert.equal(statusIssues.length, invalid.length)
+  assert.deepEqual(Object.keys(statusIssues[0]).sort(), ['id', 'status', 'title'])
+  assert(!JSON.stringify(statusIssues).includes('private-never-return'))
+})
+
+test('真实读取链路兼容空状态，隔离未知项并在补填完成后重新计分和清除警告', async () => {
+  let time = instant
+  const source = [
+    { record_id: 'empty-status', fields: { 任务详情: '空状态任务', 分值: '5', 负责人: [{ id: 'a', name: '成员甲' }] } },
+    { record_id: 'done', fields: { 任务详情: '完成任务', 完成情况: '已完成', 分值: '3', 负责人: [{ id: 'a', name: '成员甲' }] } },
+    { record_id: 'unknown', fields: { 任务详情: '未知状态任务', 完成情况: '待验收', 分值: '99', 负责人: [{ id: 'a', name: '成员甲' }], 内部资料: 'private-never-return' } }
+  ]
+  const handler = createDashboardService({ now: () => time, fetcher: async url => String(url).includes('/auth/')
+    ? reply({ code: 0, tenant_access_token: 'private-token' }) : reply({ code: 0, data: { items: source, has_more: false } }) })
+  const config = context({ env: { ...env, FEISHU_FIELD_MAP: JSON.stringify({ title: '任务详情', assignees: '负责人', status: '完成情况' }) } })
+  const response = await handler(config)
+  assert.equal(response.status, 200)
+  const body = await response.json()
+  assert.equal(body.tasks.length, 2)
+  assert.equal(body.tasks[0].statusMissing, true)
+  assert.deepEqual(body.statusIssues, [{ id: 'unknown', title: '未知状态任务', status: '待验收' }])
+  assert.equal(dashboardScoreboard(body.tasks).rows[0].score, 3)
+  assert(!JSON.stringify(body).includes('private-never-return'))
+  assert(!JSON.stringify(body).includes('private-token'))
+  assert.deepEqual((await (await handler(config)).json()).statusIssues, body.statusIssues)
+  source[0].fields.完成情况 = '已完成'
+  source[2].fields.完成情况 = '未完成'
+  time += 31_000
+  const repaired = await (await handler(config)).json()
+  assert.deepEqual(repaired.statusIssues, [])
+  assert.equal(repaired.tasks.length, 3)
+  assert.equal(repaired.tasks[0].statusMissing, undefined)
+  assert.equal(dashboardScoreboard(repaired.tasks).rows[0].score, 8)
+  source[0].fields.完成情况 = null
+  time += 31_000
+  const reopened = await (await handler(config)).json()
+  assert.equal(reopened.tasks[0].statusMissing, true)
+  assert.equal(dashboardScoreboard(reopened.tasks).rows[0].score, 3)
+})
+
+test('全部状态未知仍明确报错并给出白名单诊断，全部空状态可正常展示', async () => {
+  for (const [status, expected] of [['待验收', 502], [null, 200]]) {
+    const handler = createDashboardService({ fetcher: async url => String(url).includes('/auth/')
+      ? reply({ code: 0, tenant_access_token: 'private-token' })
+      : reply({ code: 0, data: { items: [{ record_id: 'id', fields: { 任务名称: '示例任务', 完成情况: status, 私有资料: 'private-never-return' } }], has_more: false } }) })
+    const response = await handler(context())
+    assert.equal(response.status, expected)
+    const body = await response.json()
+    if (status) {
+      assert.equal(body.reason, 'INVALID_TASK_STATUS')
+      assert.deepEqual(body.statusIssues, [{ id: 'id', title: '示例任务', status }])
+    } else assert.equal(body.tasks[0].statusMissing, true)
+    assert(!JSON.stringify(body).includes('private-never-return'))
+    assert(!JSON.stringify(body).includes('private-token'))
+  }
+})
+
 test('现有任务表的部门多选分别筛选，不拼接标签或重复计任务', () => {
   const tasks = normalizeDashboardRecords([{ record_id: 'task', fields: {
     任务详情: '多部门任务', 负责人: [{ id: 'person', name: '成员' }],

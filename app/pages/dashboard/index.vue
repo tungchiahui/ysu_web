@@ -2,7 +2,7 @@
 import { site } from '~/data/site'
 import { competitions } from '~/data/competitions'
 import { prepareCompetitions, competitionTimeLeft } from '~/utils/competitions'
-import { dashboardGridLayout, dashboardTaskPages, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardScoreboard, type DashboardData, type DashboardTask } from '~/utils/dashboard'
+import { dashboardGridLayout, dashboardTaskPages, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardScoreboard, type DashboardData, type DashboardTask, type DashboardStatusIssue } from '~/utils/dashboard'
 import { DASHBOARD_PREFERENCES_KEY, dashboardPreferences, readDashboardPreferences } from '../../../utils/dashboard-experience.mjs'
 import { dashboardCodeProfile } from '../../../utils/dashboard-members.mjs'
 
@@ -14,6 +14,8 @@ const fullscreen = ref(false)
 const displayMessage = ref('')
 const selectedTaskId = ref<string | null>(null)
 const showCompletion = ref(false)
+const showStatusIssues = ref(false)
+const failedStatusIssues = shallowRef<DashboardStatusIssue[]>([])
 const viewportFitsScreen = ref(false)
 const desktopPagination = ref(false)
 const showSyncDetails = ref(false)
@@ -61,6 +63,7 @@ const formatEventTime = (value: number) => new Intl.DateTimeFormat('zh-CN', {
 }).format(value)
 
 const tasks = computed(() => data.value?.tasks || [])
+const missingStatusCount = computed(() => tasks.value.filter(task => task.statusMissing).length)
 const groups = computed(() => [...new Set<string>(tasks.value.flatMap(dashboardTaskGroups))].sort((a, b) => a.localeCompare(b, 'zh-CN')))
 const scopedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value, search: search.value, now: currentTime.value }))
 const counts = computed(() => ({
@@ -83,7 +86,8 @@ const pageTasks = computed(() => paginated.value ? visibleTasks.value.slice(task
 const rankedTasks = computed<DashboardTask[]>(() => selectDashboardTasks(tasks.value, { status: 'all', group: selectedGroup.value }))
 const scoreboard = computed(() => dashboardScoreboard(rankedTasks.value))
 const activeTask = computed(() => tasks.value.find(task => task.id === selectedTaskId.value))
-const overlayOpen = computed(() => Boolean(activeTask.value || showCompletion.value))
+const statusIssues = computed(() => failedStatusIssues.value.length ? failedStatusIssues.value : data.value?.statusIssues || [])
+const overlayOpen = computed(() => Boolean(activeTask.value || showCompletion.value || showStatusIssues.value))
 const completionScope = computed(() => `${selectedGroup.value === 'all' ? '全部组别' : selectedGroup.value}${search.value.trim() ? ' · 当前关键词筛选' : ''}`)
 const development = computed(() => data.value?.development || data.value?.github)
 const developmentEvents = computed(() => development.value?.events || [])
@@ -98,6 +102,7 @@ const clock = computed(() => currentTime.value ? new Intl.DateTimeFormat('zh-CN'
 watch([selectedStatus, selectedGroup, search, paginated, pageSize], () => { pageIndex.value = 0; lastRotation = currentTime.value })
 watch(pages, value => { pageIndex.value = Math.min(pageIndex.value, value - 1) })
 watch(activeTask, task => { if (!task) selectedTaskId.value = null })
+watch(statusIssues, issues => { if (!issues.length) showStatusIssues.value = false })
 watch(data, value => { if (!value) { selectedTaskId.value = null; showCompletion.value = false } })
 watch([selectedGroup, selectedStatus, screen, autoRotate], () => {
   if (!import.meta.client || !preferencesLoaded) return
@@ -132,11 +137,13 @@ async function refresh() {
     const result = await fetch('/api/dashboard', { signal: controller.signal, cache: 'no-store', headers: authorization ? { Authorization: `Bearer ${authorization}` } : {} })
     const body = result.headers.get('Content-Type')?.includes('application/json') ? await result.json() : null
     if (ticket !== generation || disposed) return
+    failedStatusIssues.value = []
     if (result.status === 401) {
       data.value = null
       phase.value = 'locked'
       message.value = authorization ? '口令不正确，请重新输入。' : ''
       authorization = ''
+      showStatusIssues.value = false
       return
     }
     if (result.status === 404 || body?.code === 'NOT_CONFIGURED') {
@@ -145,7 +152,13 @@ async function refresh() {
       message.value = '看板尚未开放，请联系团队负责人。'
       return
     }
-    if (!result.ok || !Array.isArray(body?.tasks) || !(body?.development || body?.github)) throw new Error('DATA_UNAVAILABLE')
+    if (!result.ok || !Array.isArray(body?.tasks) || !(body?.development || body?.github)) {
+      if (body?.reason === 'INVALID_TASK_STATUS') {
+        failedStatusIssues.value = body.statusIssues || []
+        throw new Error('INVALID_TASK_STATUS')
+      }
+      throw new Error('DATA_UNAVAILABLE')
+    }
     const entering = !data.value
     data.value = body
     if (selectedGroup.value !== 'all' && !groups.value.includes(selectedGroup.value)) selectedGroup.value = 'all'
@@ -155,10 +168,13 @@ async function refresh() {
       await nextTick()
       window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
     }
-  } catch {
+  } catch (error) {
     if (!disposed && ticket === generation) {
       phase.value = data.value ? 'ready' : 'error'
-      message.value = data.value ? '更新暂时中断，正在显示上次结果。' : '暂时无法获取任务，请稍后重试。'
+      message.value = data.value ? '更新暂时中断，正在显示上次结果。'
+        : error instanceof Error && error.message === 'INVALID_TASK_STATUS'
+          ? '飞书任务的完成状态无法识别，请检查“完成状态/完成情况”字段。'
+          : '暂时无法获取任务，请稍后重试。'
     }
   } finally {
     clearTimeout(timeout)
@@ -183,6 +199,8 @@ function lock() {
   data.value = null
   selectedTaskId.value = null
   showCompletion.value = false
+  showStatusIssues.value = false
+  failedStatusIssues.value = []
   message.value = ''
   phase.value = 'locked'
   clearTimeout(pollTimer)
@@ -398,12 +416,14 @@ onBeforeUnmount(() => {
       <div class="dashboard-radar" aria-hidden="true"><span /><i /></div>
       <h2>{{ phase === 'loading' ? '正在读取任务…' : phase === 'closed' ? '看板尚未开放' : '暂时无法更新' }}</h2>
       <p>{{ message || '稍等片刻，正在获取最新进展。' }}</p>
+      <button v-if="statusIssues.length" type="button" @click="showStatusIssues = true">查看 {{ statusIssues.length }} 项状态异常</button>
       <button v-if="phase === 'error'" type="button" :disabled="loading" @click="refresh">重新加载</button>
     </section>
 
     <template v-else>
       <p v-if="data.demo" class="dashboard-notice">本地演示数据</p>
       <p v-if="updateInterrupted" role="status" class="dashboard-notice dashboard-warning">{{ message || '更新暂时中断，正在显示上次结果。' }} 上次更新 {{ formatTime(data.updatedAt) }}</p>
+      <p v-if="missingStatusCount || statusIssues.length" role="status" class="dashboard-notice dashboard-warning"><template v-if="missingStatusCount">{{ missingStatusCount }} 项状态未填写，暂按未完成展示、不计分。</template><template v-if="statusIssues.length">{{ statusIssues.length }} 项状态无法识别，暂未纳入统计。<button type="button" class="dashboard-text-button" @click="showStatusIssues = true">查看异常任务 →</button></template></p>
       <div class="dashboard-toolbar">
         <div class="dashboard-filters">
           <div class="dashboard-query"><label for="task-search" class="visually-hidden">搜索任务</label><input id="task-search" v-model="search" type="search" placeholder="搜索任务、执行人或备注"><label for="task-group" class="visually-hidden">组别</label><select id="task-group" v-model="selectedGroup"><option value="all">全部组别</option><option v-for="group in groups" :key="group" :value="group">{{ group }}</option></select></div>
@@ -457,6 +477,12 @@ onBeforeUnmount(() => {
     </template>
     <DashboardTaskDetails v-if="activeTask" :task="activeTask" :now="currentTime" :profile-for="memberProfile" @close="selectedTaskId = null" />
     <DashboardCompletion v-if="data && showCompletion" :tasks="scopedTasks" :now="currentTime" :scope="completionScope" @close="showCompletion = false" />
+    <DashboardDialog v-if="showStatusIssues" :open="true" labelledby="dashboard-status-issues-title" @close="showStatusIssues = false">
+      <header class="dashboard-dialog-heading"><p class="eyebrow">任务状态检查</p><button type="button" autofocus aria-label="关闭状态异常" @click="showStatusIssues = false">关闭 ×</button></header>
+      <h2 id="dashboard-status-issues-title">{{ statusIssues.length }} 项任务状态待确认</h2>
+      <p>以下任务的“完成状态/完成情况”无法识别，暂未纳入任务和积分统计。请在飞书核对，当前支持“未完成”和“已完成”；修改后随下一次同步更新。状态为空的任务按未完成展示，不在此列表中。</p>
+      <dl class="dashboard-detail-fields"><div v-for="issue in statusIssues" :key="issue.id"><dt>{{ issue.title }}</dt><dd>当前状态：{{ issue.status || '未填写' }}</dd></div></dl>
+    </DashboardDialog>
   </main>
 </template>
 

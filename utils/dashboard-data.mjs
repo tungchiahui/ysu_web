@@ -80,7 +80,7 @@ export function dashboardTaskGroups(task) {
   return Array.isArray(task.groups) ? task.groups : task.group ? [task.group] : []
 }
 
-export function normalizeDashboardRecords(records, overrides = {}) {
+export function normalizeDashboardRecords(records, overrides = {}, { statusIssues } = {}) {
   const names = { ...DASHBOARD_FIELD_NAMES }
   for (const [key, value] of Object.entries(overrides)) {
     if (!Object.hasOwn(names, key) || typeof value !== 'string' || !value.trim()) throw new Error('INVALID_FIELD_MAP')
@@ -92,8 +92,16 @@ export function normalizeDashboardRecords(records, overrides = {}) {
     const title = text(field('title'))
     if (!title) return []
     if (typeof record.record_id !== 'string' || !record.record_id) throw new Error('INVALID_TASK_ID')
-    const status = text(field('status'))
-    if (!['未完成', '已完成'].includes(status)) throw new Error('INVALID_TASK_STATUS')
+    const rawStatus = field('status')
+    const status = text(rawStatus)
+    const statusMissing = rawStatus === undefined || rawStatus === null
+      || (typeof rawStatus === 'string' && !rawStatus.trim()) || (Array.isArray(rawStatus) && !rawStatus.length)
+    if (!statusMissing && !['未完成', '已完成'].includes(status)) {
+      // 服务可隔离单条状态异常；默认严格校验，绝不猜测为未完成或已完成。
+      if (!Array.isArray(statusIssues)) throw new Error('INVALID_TASK_STATUS')
+      statusIssues.push({ id: record.record_id, title: title.slice(0, 500), status: status.slice(0, 100) || '无法识别的状态格式' })
+      return []
+    }
     const priority = text(field('priority'))
     const groupValue = field('group')
     const groups = [...new Set((Array.isArray(groupValue) ? groupValue : [groupValue])
@@ -105,7 +113,7 @@ export function normalizeDashboardRecords(records, overrides = {}) {
       ...taskScore(field('score')),
       // 仅保留旧字段映射/API兼容；当前卡片、排序和总分榜均使用分值。
       priority: /^(高|紧急|P0)(?:$|[-－：:])/i.test(priority) ? 'high' : /^(低|P2)(?:$|[-－：:])/i.test(priority) ? 'low' : 'medium',
-      status: status === '已完成' ? 'done' : 'todo', note: text(field('note')).slice(0, 3000)
+      status: status === '已完成' ? 'done' : 'todo', ...(statusMissing ? { statusMissing: true } : {}), note: text(field('note')).slice(0, 3000)
     }]
   })
 }

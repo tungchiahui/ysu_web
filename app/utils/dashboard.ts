@@ -1,10 +1,11 @@
 export { dashboardGridLayout, dashboardTaskPages, dashboardMemberPath, dashboardTaskState, dashboardTaskGroups, selectDashboardTasks, dashboardScoreboard, dashboardScoreLabel } from '../../utils/dashboard-data.mjs'
 
 export type DashboardPerson = { key: string; name: string; avatar: string }
+export type DashboardStatusIssue = { id: string; title: string; status: string }
 export type DashboardTask = {
   id: string; title: string; group: string; groups?: string[]; assignees: DashboardPerson[]; publisher: string; publishers?: DashboardPerson[]
   deadline: number | null; completedAt: number | null; score: number | null; scoreInvalid?: boolean
-  status: 'todo' | 'done'; note: string
+  status: 'todo' | 'done'; statusMissing?: boolean; note: string
 }
 export type DashboardDevelopment = {
   enabled: boolean; unavailable: boolean; updatedAt?: number; configurationError?: boolean; syncing?: boolean
@@ -18,6 +19,7 @@ export type DashboardDevelopment = {
 }
 export type DashboardData = {
   tasks: DashboardTask[]; updatedAt: number; stale: boolean; refreshSeconds: number; demo?: boolean
+  statusIssues?: DashboardStatusIssue[]
   development?: DashboardDevelopment
   /** 兼容旧部署响应，新增代码使用 development。 */
   github?: DashboardDevelopment
