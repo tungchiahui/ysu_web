@@ -24,7 +24,8 @@
     "wiki:output-check": "node --experimental-strip-types scripts/wiki-output-check.mjs",
     "wiki:output-test": "node --experimental-strip-types --test tests/wiki-output.test.mjs",
     "news:check": "node scripts/news-check.mjs",
-    "news:test": "node --test tests/news.test.mjs"
+    "news:test": "node --test tests/news.test.mjs",
+    "wiki:toc-test": "node --experimental-strip-types --test tests/wiki-content-ready.test.mjs tests/wiki-toc-scroll.test.mjs"
   },
   "dependencies": {
     "@nuxt/content": "^3.13.0",
