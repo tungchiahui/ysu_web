@@ -439,3 +439,73 @@
 .member-profile-content.no-related {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* 个人介绍统计卡片：两套 GitHub SVG 随网站主题切换。 */
+.member-prose .member-github-card {
+  margin: 12px 0 24px;
+  max-width: 100%;
+}
+
+.member-prose .member-github-card img {
+  width: min(100%, 560px);
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+}
+
+.member-prose .member-github-card .member-github-light {
+  display: block;
+}
+.member-prose .member-github-card .member-github-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .member-prose .member-github-card .member-github-light {
+  display: none;
+}
+:root[data-theme="dark"] .member-prose .member-github-card .member-github-dark {
+  display: block;
+}
+
+/* 个人介绍联系入口：使用站点现有配色。 */
+.member-prose .member-contact-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 24px;
+}
+
+.member-prose .member-contact-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 39px;
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: .92rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+  transition: border-color .18s, transform .18s;
+}
+
+.member-prose .member-contact-links a:hover {
+  border-color: var(--red, var(--accent));
+  transform: translateY(-1px);
+}
+.member-prose .member-contact-links a:focus-visible {
+  outline: 2px solid var(--red, var(--accent));
+  outline-offset: 3px;
+}
+
+@media (max-width: 500px) {
+  .member-prose .member-contact-links {
+    gap: 8px;
+  }
+  .member-prose .member-contact-links a {
+    padding: 8px 11px;
+    font-size: .87rem;
+  }
+}
