@@ -467,45 +467,157 @@
   display: block;
 }
 
-/* 个人介绍联系入口：使用站点现有配色。 */
-.member-prose .member-contact-links {
+/* 董佳辉个人介绍：恢复原版 Shields 风格徽章，按类别紧凑排列。 */
+.member-prose .member-shield-tech-groups {
+  display: grid;
+  gap: 19px;
+  margin: 18px 0 27px;
+}
+.member-prose .member-shield-tech-group {
+  display: grid;
+  gap: 10px;
+}
+.member-prose .member-shield-tech-heading {
+  color: var(--muted);
+  font-size: .87rem;
+  font-weight: 800;
+}
+.member-prose .member-shield-tech-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin: 14px 0 24px;
+  align-items: center;
+  gap: 9px;
 }
-
-.member-prose .member-contact-links a {
+.member-prose .member-shield-tech-badges > img {
+  display: block;
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 100%;
+  height: 30px;
+  object-fit: contain;
+}
+.member-prose .member-shield-tech-gazebo {
   display: inline-flex;
   align-items: center;
-  min-height: 39px;
-  padding: 7px 14px;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px 0 8px;
+  border-radius: 2px;
+  background: #de6f1c;
+  color: #fff;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+.member-prose .member-shield-tech-gazebo img {
+  display: block;
+  width: 19px;
+  height: 19px;
+  object-fit: contain;
+}
+/* 联系方式：桌面三列使用原版横向 Shields，手机两列采用同 Logo 的上下布局。 */
+.member-prose .member-shield-contacts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
+  margin: 16px 0 30px;
+}
+.member-prose .member-shield-contact {
+  display: flex;
+  min-width: 0;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 7px;
   background: var(--surface);
-  color: var(--ink);
-  font-size: .92rem;
-  font-weight: 600;
-  line-height: 1.3;
   text-decoration: none;
-  transition: border-color .18s, transform .18s;
+  transition: transform .15s, border-color .15s;
 }
-
-.member-prose .member-contact-links a:hover {
-  border-color: var(--red, var(--accent));
-  transform: translateY(-1px);
+.member-prose .member-shield-contact:hover {
+  transform: translateY(-2px);
+  border-color: var(--red);
 }
-.member-prose .member-contact-links a:focus-visible {
-  outline: 2px solid var(--red, var(--accent));
-  outline-offset: 3px;
+.member-prose .member-shield-contact:focus-visible {
+  outline: 2px solid var(--red);
+  outline-offset: 2px;
 }
-
-@media (max-width: 500px) {
-  .member-prose .member-contact-links {
-    gap: 8px;
+.member-prose .member-shield-contact-wide {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 34px;
+  object-fit: contain;
+}
+.member-prose .member-shield-contact-stack {
+  display: none;
+}
+@media (max-width: 920px) {
+  .member-prose .member-shield-contacts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
   }
-  .member-prose .member-contact-links a {
-    padding: 8px 11px;
-    font-size: .87rem;
+  .member-prose .member-shield-contact {
+    min-height: 72px;
+    padding: 5px;
+  }
+  .member-prose .member-shield-contact-wide {
+    display: none;
+  }
+  .member-prose .member-shield-contact-stack {
+    display: flex;
+    width: 100%;
+    max-width: 176px;
+    height: 66px;
+    flex-direction: column;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .member-prose .member-shield-contact-top {
+    display: flex;
+    height: 29px;
+    min-height: 29px;
+    align-items: center;
+    justify-content: center;
+    background: #555;
+  }
+  .member-prose .member-shield-contact-top img {
+    display: block;
+    width: auto;
+    max-width: 100%;
+    max-height: 29px;
+    object-fit: contain;
+  }
+  .member-prose .member-shield-contact-handle {
+    display: flex;
+    min-width: 0;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    padding: 0 3px;
+    background: var(--badge-color, #333);
+    color: var(--badge-text, #fff);
+    font-size: .75rem;
+    font-weight: 800;
+    letter-spacing: .35px;
+    line-height: 1.15;
+    text-align: center;
+    overflow-wrap: anywhere;
+  }
+}
+@media (max-width: 460px) {
+  .member-prose .member-shield-tech-badges {
+    gap: 7px;
+  }
+  .member-prose .member-shield-tech-badges > img,
+  .member-prose .member-shield-tech-gazebo {
+    height: 28px;
+  }
+  .member-prose .member-shield-contacts {
+    gap: 8px;
   }
 }
