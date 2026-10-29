@@ -2,6 +2,7 @@
 import { site } from '~/data/site'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import mediumZoom from 'medium-zoom'
+import { createWikiAnchorScroller } from '~/utils/wiki-anchor-scroll'
 import { getActiveWikiHeadingId, getWikiTocScrollTop } from '~/utils/wiki-toc-scroll'
 import { compareWikiChapters, numberWikiChapters } from '~~/utils/wiki-chapters'
 import { resolveWikiAuthors, wikiAuthorProfiles } from '~~/utils/wiki-authors.mjs'
@@ -141,9 +142,10 @@ const readingProgress = ref(0)
 const tocLinks = ref<TocDisplayLink[]>([])
 const defaultHeadingScrollOffset = 108
 const pendingAnchorId = ref('')
-const scrollRetryTimers: ReturnType<typeof setTimeout>[] = []
+let initialHashHandled = false
+let anchorScroller: ReturnType<typeof createWikiAnchorScroller> | null = null
+let anchorHighlight: Animation | null = null
 const imageLoadCleanupFns: Array<() => void> = []
-const anchorSettleDelays = [820, 1300, 2100]
 let headingScrollOffset = defaultHeadingScrollOffset
 let headingElements: HTMLElement[] = []
 let zoomInstance: ReturnType<typeof mediumZoom> | null = null
@@ -363,20 +365,8 @@ const getHeadingTargetTop = (id: string) => {
   const element = document.getElementById(id)
   if (!element) return null
 
-  return Math.max(0, element.getBoundingClientRect().top + window.scrollY - headingScrollOffset)
-}
-
-const scrollHeadingIntoView = (id: string, behavior: ScrollBehavior = 'smooth') => {
-  const element = document.getElementById(id)
-  if (!element) return false
-
-  element.scrollIntoView({ behavior, block: 'start', inline: 'nearest' })
-  return true
-}
-
-const clearAnchorSettleTimers = () => {
-  scrollRetryTimers.forEach((timer) => clearTimeout(timer))
-  scrollRetryTimers.length = 0
+  const top = element.getBoundingClientRect().top + window.scrollY - headingScrollOffset
+  return Math.max(0, Math.min(top, document.documentElement.scrollHeight - window.innerHeight))
 }
 
 const clearImageLoadListeners = () => {
@@ -384,66 +374,29 @@ const clearImageLoadListeners = () => {
   imageLoadCleanupFns.length = 0
 }
 
-const correctHeadingPosition = (id: string) => {
-  const top = getHeadingTargetTop(id)
-  if (top === null) return false
+const correctHeadingPosition = () => anchorScroller?.refresh()
 
-  if (Math.abs(window.scrollY - top) > 4) {
-    window.scrollTo({ top, behavior: 'auto' })
-    updateViewportState()
-    return true
-  }
-
-  updateViewportState()
-  return false
-}
-
-const warmImagesBeforeHeading = async (id: string) => {
-  const headingTop = getHeadingTargetTop(id)
-  if (headingTop === null) return
-
-  const images = Array.from(document.querySelectorAll('.wiki-content-body img')) as HTMLImageElement[]
-  const pendingImages = images.filter((image) => {
-    const imageTop = image.getBoundingClientRect().top + window.scrollY
-    return imageTop < headingTop && !image.complete
-  })
-
-  if (!pendingImages.length) return
-
-  await Promise.race([
-    Promise.allSettled(pendingImages.map((image) => {
+const warmImagesBeforeHeading = (id: string) => {
+  const heading = document.getElementById(id)
+  if (!heading) return
+  contentRoot.value?.querySelectorAll('img').forEach((image) => {
+    // DOM order includes images directly before the heading even if collapsed
+    // placeholders currently share its coordinates. No network timeout needed.
+    if (image.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING) {
       image.loading = 'eager'
-
-      if (image.decode) {
-        return image.decode().catch(() => undefined)
-      }
-
-      return new Promise<void>((resolve) => {
-        image.addEventListener('load', () => resolve(), { once: true })
-        image.addEventListener('error', () => resolve(), { once: true })
-      })
-    })),
-    new Promise((resolve) => setTimeout(resolve, 900))
-  ])
+    }
+  })
 }
 
-const scheduleAnchorSettle = (id: string) => {
-  clearAnchorSettleTimers()
-
-  anchorSettleDelays.forEach((delay) => {
-    const timer = setTimeout(() => {
-      if (pendingAnchorId.value !== id) return
-      correctHeadingPosition(id)
-    }, delay)
-    scrollRetryTimers.push(timer)
-  })
-
-  const doneTimer = setTimeout(() => {
-    if (pendingAnchorId.value === id) {
-      pendingAnchorId.value = ''
-    }
-  }, anchorSettleDelays[anchorSettleDelays.length - 1] + 500)
-  scrollRetryTimers.push(doneTimer)
+const highlightAnchor = (id: string) => {
+  anchorHighlight?.cancel()
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const heading = document.getElementById(id)
+  if (!heading) return
+  anchorHighlight = heading.animate([
+    { backgroundColor: 'var(--wiki-accent-soft)', boxShadow: '0 0 0 8px var(--wiki-accent-soft)' },
+    { backgroundColor: 'transparent', boxShadow: '0 0 0 0px transparent' }
+  ], { duration: 1100, easing: 'ease-out' })
 }
 
 const decodeAnchorHash = (hash: string) => {
@@ -473,7 +426,7 @@ const navigateToHeading = (
   behavior: ScrollBehavior = 'smooth',
   shouldUpdateHash = false
 ) => {
-  clearAnchorSettleTimers()
+  cancelPendingAnchorScroll()
   pendingAnchorId.value = id
 
   if (getHeadingTargetTop(id) === null) {
@@ -481,15 +434,27 @@ const navigateToHeading = (
     return false
   }
 
-  if (shouldUpdateHash) {
-    updateUrlHash(id)
-  }
-
-  warmImagesBeforeHeading(id).finally(() => {
-    if (pendingAnchorId.value !== id) return
-    scrollHeadingIntoView(id, behavior)
-    scheduleAnchorSettle(id)
+  if (shouldUpdateHash) updateUrlHash(id)
+  let highlighted = false
+  anchorScroller = createWikiAnchorScroller({
+    target: () => getHeadingTargetTop(id),
+    position: () => window.scrollY,
+    // Explicit instant bypasses the site's global CSS scroll-behavior: smooth.
+    write: top => window.scrollTo({ top, behavior: 'instant' }),
+    requestFrame: callback => window.requestAnimationFrame(callback),
+    cancelFrame: frame => window.cancelAnimationFrame(frame),
+    reducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    onArrive: () => {
+      updateViewportState()
+      if (!highlighted) {
+        highlighted = true
+        if (behavior === 'smooth') highlightAnchor(id)
+      }
+    }
   })
+  initialHashHandled = true
+  warmImagesBeforeHeading(id)
+  anchorScroller.refresh(behavior === 'smooth')
 
   return true
 }
@@ -501,12 +466,15 @@ const scrollToCurrentHash = (behavior: ScrollBehavior = 'auto') => {
 }
 
 const handleHashChange = () => {
-  scrollToCurrentHash('smooth')
+  if (window.location.hash) scrollToCurrentHash('smooth')
+  else cancelPendingAnchorScroll()
 }
 
 const cancelPendingAnchorScroll = () => {
   pendingAnchorId.value = ''
-  clearAnchorSettleTimers()
+  anchorScroller?.cancel()
+  anchorScroller = null
+  anchorHighlight?.cancel()
 }
 
 const setupImageLoadReflowSync = () => {
@@ -519,7 +487,7 @@ const setupImageLoadReflowSync = () => {
     const handleImageSettled = () => {
       scheduleViewportSync()
       if (pendingAnchorId.value) {
-        correctHeadingPosition(pendingAnchorId.value)
+        correctHeadingPosition()
       }
     }
 
@@ -542,7 +510,7 @@ const setupContentResizeSync = () => {
   contentResizeObserver = new ResizeObserver(() => {
     scheduleViewportSync()
     if (pendingAnchorId.value) {
-      correctHeadingPosition(pendingAnchorId.value)
+      correctHeadingPosition()
     }
   })
   contentResizeObserver.observe(content)
@@ -590,7 +558,7 @@ const handleWindowResize = () => {
   syncActiveToc()
   scheduleViewportSync()
   if (pendingAnchorId.value) {
-    correctHeadingPosition(pendingAnchorId.value)
+    correctHeadingPosition()
   }
 }
 
@@ -601,13 +569,23 @@ watch(hasMobileDrawer, (isOpen) => {
   }
 })
 
+let initializedContent: HTMLElement | null = null
 useWikiContentReady(contentRoot, () => {
+  const restoreAnchor = pendingAnchorId.value
+  const firstRender = initializedContent !== contentRoot.value
+  initializedContent = contentRoot.value
+  if (firstRender) initialHashHandled = false
   enhanceContent()
-  scrollToCurrentHash('auto')
+  if (restoreAnchor) navigateToHeading(restoreAnchor, 'auto')
+  else if (!initialHashHandled) scrollToCurrentHash('auto')
 })
 
 watch(() => route.hash, (hash) => {
-  if (!import.meta.client || !hash) return
+  if (!import.meta.client) return
+  if (!hash) {
+    cancelPendingAnchorScroll()
+    return
+  }
 
   const id = decodeAnchorHash(hash)
   if (id) {
@@ -615,13 +593,35 @@ watch(() => route.hash, (hash) => {
   }
 })
 
+watch(cleanPath, () => {
+  cancelPendingAnchorScroll()
+  initialHashHandled = false
+})
+
+const handleAnchorInterruption = () => {
+  initialHashHandled = true
+  cancelPendingAnchorScroll()
+}
+
+const handleContentAnchorClick = (event: MouseEvent) => {
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+  const link = (event.target as Element)?.closest('a')
+  if (!link || link.hasAttribute('download') || (link.target && link.target !== '_self')) return
+  const url = new URL(link.href, window.location.href)
+  if (url.origin !== window.location.origin || url.pathname !== window.location.pathname || url.search !== window.location.search || !url.hash) return
+  if (navigateToHeading(decodeAnchorHash(url.hash), 'smooth', true)) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+}
+
 onMounted(() => {
   window.addEventListener('scroll', handleWindowScroll, { passive: true })
   window.addEventListener('resize', handleWindowResize, { passive: true })
   window.addEventListener('hashchange', handleHashChange)
-  window.addEventListener('wheel', cancelPendingAnchorScroll, { passive: true })
-  window.addEventListener('touchstart', cancelPendingAnchorScroll, { passive: true })
-  window.addEventListener('keydown', cancelPendingAnchorScroll)
+  window.addEventListener('wheel', handleAnchorInterruption, { passive: true })
+  window.addEventListener('touchstart', handleAnchorInterruption, { passive: true })
+  window.addEventListener('keydown', handleAnchorInterruption)
   updateViewportState()
   scrollToCurrentHash('auto')
 })
@@ -630,10 +630,10 @@ onUnmounted(() => {
   window.removeEventListener('scroll', handleWindowScroll)
   window.removeEventListener('resize', handleWindowResize)
   window.removeEventListener('hashchange', handleHashChange)
-  window.removeEventListener('wheel', cancelPendingAnchorScroll)
-  window.removeEventListener('touchstart', cancelPendingAnchorScroll)
-  window.removeEventListener('keydown', cancelPendingAnchorScroll)
-  clearAnchorSettleTimers()
+  window.removeEventListener('wheel', handleAnchorInterruption)
+  window.removeEventListener('touchstart', handleAnchorInterruption)
+  window.removeEventListener('keydown', handleAnchorInterruption)
+  cancelPendingAnchorScroll()
   clearViewportSyncFrame()
   clearImageLoadListeners()
   contentResizeObserver?.disconnect()
@@ -744,7 +744,7 @@ function normalizePath(path: string) {
             </div>
           </header>
 
-          <div ref="contentRoot" class="wiki-content-body">
+          <div ref="contentRoot" class="wiki-content-body" @click.capture="handleContentAnchorClick">
             <ContentRenderer :value="page" />
           </div>
 
