@@ -14,5 +14,6 @@ useHead({
         <p>项目页面内容正在整理。</p>
       </div>
     </section>
+    <section class="project-scene" aria-label="机器人研发现场"><img src="/images/team/robot-workbench.jpg" alt="燕鹰战队队员在工作区调试机器人" width="1620" height="1080"></section>
   </main>
 </template>

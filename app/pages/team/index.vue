@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { site } from '~/data/site'
-import { MEMBER_GROUPS, MEMBER_ROLES, hasMemberSeason, matchesMember, memberSections, memberSeasons, seasonFilterLabel, type Member } from '~/utils/members'
+import { MEMBER_GROUPS, MEMBER_ROLES, matchesMember, memberSections, memberSeasons, seasonFilterLabel, type Member } from '~/utils/members'
 
 useHead({ title: `成员 | ${site.fullName}` })
 const { data: rawMembers } = await useAsyncData('members:list', () => queryCollection('members').all() as Promise<Member[]>)
@@ -33,66 +33,46 @@ const filteredMembers = computed(() => allMembers.value.filter(member => matches
 })))
 const groupedMembers = computed(() => memberSections(filteredMembers.value,
   selectedSeason.value, selectedGroup.value, selectedRole.value))
-const stats = computed(() => [
-  { value: allMembers.value.filter(member => member.kind === 'student').length, label: '学生档案' },
-  { value: allMembers.value.filter(member => member.kind === 'teacher' && hasMemberSeason(member, selectedSeason.value)).length, label: '指导老师' },
-  { value: filteredMembers.value.length, label: '当前筛选' },
-  { value: MEMBER_GROUPS.length, label: '成员组别' }
-])
+const seasonHeading = computed(() => selectedSeason.value === 'all' ? '全部赛季' : `${selectedSeason.value} 赛季`)
+const clearFilters = () => {
+  search.value = ''
+  selectedSeason.value = '2027'
+  selectedKind.value = 'all'
+  selectedGroup.value = 'all'
+  selectedRole.value = 'all'
+}
 </script>
 
 <template>
-  <main>
-    <section class="page-hero members-hero">
-      <div>
-        <p class="eyebrow">Team Roster</p>
-        <h1>成员</h1>
-        <p>按赛季、组别和职务浏览战队成员与指导老师档案。</p>
+  <main class="roster-page editorial-wrap">
+    <header class="roster-heading">
+      <div><h1>成员</h1><p>按赛季、组别和职务浏览战队成员与指导老师档案。</p></div>
+      <p class="roster-current" role="status" aria-live="polite">{{ seasonHeading }}<span>{{ filteredMembers.length }} 人</span></p>
+    </header>
+    <section class="roster-controls" aria-label="成员筛选">
+      <div class="roster-primary-controls">
+        <div class="roster-seasons" aria-label="赛季筛选">
+          <button v-for="season in seasonTabs" :key="season.value" class="roster-season" :aria-pressed="selectedSeason === season.value" type="button" @click="selectedSeason = season.value">{{ season.label }}</button>
+        </div>
+        <div class="roster-search"><label class="visually-hidden" for="member-search">搜索成员</label><input id="member-search" v-model="search" type="search" placeholder="搜索姓名、学院或职务"></div>
+      </div>
+      <div class="roster-secondary-controls">
+        <label class="roster-select">身份<select v-model="selectedKind" aria-label="身份"><option v-for="kind in kindDefs" :key="kind.value" :value="kind.value">{{ kind.label }}</option></select></label>
+        <template v-if="selectedKind !== 'teacher'">
+          <label class="roster-select">组别<select v-model="selectedGroup" aria-label="组别"><option v-for="group in groupDefs" :key="group.value" :value="group.value">{{ group.label }}</option></select></label>
+          <label class="roster-select">职务<select v-model="selectedRole" aria-label="职务"><option v-for="role in roleDefs" :key="role.value" :value="role.value">{{ role.label }}</option></select></label>
+        </template>
+        <p class="roster-archive-note">全部档案：{{ allMembers.filter(member => member.kind === 'student').length }} 位学生 · {{ allMembers.filter(member => member.kind === 'teacher').length }} 位指导老师 · {{ MEMBER_GROUPS.length }} 个组别</p>
       </div>
     </section>
-    <section class="stats-band members-stats" aria-label="成员概览">
-      <div v-for="item in stats" :key="item.label" class="stat-item"><strong>{{ item.value }}</strong><span>{{ item.label }}</span></div>
-    </section>
-    <section class="member-controls" aria-label="成员筛选">
-      <div class="member-search">
-        <label for="member-search">搜索成员</label>
-        <input id="member-search" v-model="search" type="search" placeholder="姓名、学院、组别、职务或赛季">
-      </div>
-      <div class="member-filter">
-        <span class="member-filter-label">赛季</span>
-        <div class="filter-row" aria-label="赛季筛选">
-          <button v-for="season in seasonTabs" :key="season.value" class="filter-chip" :class="{ active: selectedSeason === season.value }" :aria-pressed="selectedSeason === season.value" type="button" @click="selectedSeason = season.value">{{ season.label }}</button>
-        </div>
-      </div>
-      <div class="member-filter">
-        <span class="member-filter-label">身份</span>
-        <div class="filter-row" aria-label="身份筛选">
-          <button v-for="kind in kindDefs" :key="kind.value" class="filter-chip" :class="{ active: selectedKind === kind.value }" :aria-pressed="selectedKind === kind.value" type="button" @click="selectedKind = kind.value">{{ kind.label }}</button>
-        </div>
-      </div>
-      <template v-if="selectedKind !== 'teacher'">
-        <div class="member-filter">
-          <span class="member-filter-label">组别</span>
-          <div class="filter-row" aria-label="组别筛选">
-            <button v-for="group in groupDefs" :key="group.value" class="filter-chip" :class="{ active: selectedGroup === group.value }" :aria-pressed="selectedGroup === group.value" type="button" @click="selectedGroup = group.value">{{ group.label }}</button>
-          </div>
-        </div>
-        <div class="member-filter">
-          <span class="member-filter-label">职务</span>
-          <div class="filter-row" aria-label="职务筛选">
-            <button v-for="role in roleDefs" :key="role.value" class="filter-chip" :class="{ active: selectedRole === role.value }" :aria-pressed="selectedRole === role.value" type="button" @click="selectedRole = role.value">{{ role.label }}</button>
-          </div>
-        </div>
-      </template>
-    </section>
-    <section class="member-directory" aria-label="成员列表">
-      <div v-if="groupedMembers.length" class="member-groups">
-        <section v-for="group in groupedMembers" :key="group.label" class="member-group">
-          <div class="section-heading compact"><p class="eyebrow">{{ group.members.length }} 人</p><h2>{{ group.label }}</h2></div>
-          <div class="member-grid"><MemberCard v-for="member in group.members" :key="member.name" :member="member" :season="selectedSeason" /></div>
+    <section class="roster-directory" aria-label="成员列表">
+      <div v-if="groupedMembers.length" class="roster-groups">
+        <section v-for="group in groupedMembers" :key="group.label" class="roster-group" :class="{ 'roster-group-teachers': group.label === '指导老师' }">
+          <div class="roster-group-heading"><h2>{{ group.label }}</h2><span>{{ group.members.length }} 人</span></div>
+          <div class="roster-grid"><MemberCard v-for="member in group.members" :key="member.name" :member="member" :season="selectedSeason" directory /></div>
         </section>
       </div>
-      <div v-else class="empty-state">没有匹配的成员。</div>
+      <div v-else class="roster-empty"><h2>没有匹配的成员</h2><p>可以更换关键词，或调整赛季、组别和职务。</p><button class="editorial-action secondary" type="button" @click="clearFilters">重置筛选</button></div>
     </section>
   </main>
 </template>
