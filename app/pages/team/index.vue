@@ -5,7 +5,7 @@ import { MEMBER_GROUPS, MEMBER_ROLES, hasMemberSeason, matchesMember, memberSect
 useHead({ title: `成员 | ${site.fullName}` })
 const { data: rawMembers } = await useAsyncData('members:list', () => queryCollection('members').all() as Promise<Member[]>)
 const search = ref('')
-const selectedSeason = ref('all')
+const selectedSeason = ref('2027')
 const selectedKind = ref('all')
 const selectedGroup = ref('all')
 const selectedRole = ref('all')
